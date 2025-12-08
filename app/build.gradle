@@ -1,16 +1,19 @@
-plugins {
-    id 'com.android.application'
-}
+apply plugin: 'com.android.application'
 
 android {
     compileSdk 34
 
     defaultConfig {
         applicationId "by.instruction.papera"
-        minSdk 22
-        targetSdk 34
-        versionCode 46
-        versionName "2.0.1"
+        minSdk 26
+        targetSdk 35
+        versionCode 62
+        versionName "5.0.0."
+
+// Поддержка страниц памяти 16 КБ
+        ndk {
+            abiFilters 'arm64-v8a', 'armeabi-v7a', 'x86', 'x86_64'
+        }
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -22,36 +25,52 @@ android {
         }
     }
 
+    // Поддержка новых архитектур с 16 КБ страницами
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging = false
+        }
+    }
+
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_11
-        targetCompatibility JavaVersion.VERSION_11
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
         coreLibraryDesugaringEnabled true
     }
 
     namespace 'by.instruction.papera'
 }
 
+// Удаляем устаревшие dex-архивы перед сборкой, чтобы не накапливались дубликаты
+def cleanProjectDex = tasks.register("cleanProjectDex", Delete) {
+    delete "$buildDir/intermediates/project_dex_archive"
+}
+
+afterEvaluate {
+    tasks.matching { it.name.startsWith("mergeProjectDex") }.configureEach {
+        dependsOn cleanProjectDex
+    }
+}
+
 dependencies {
-    // Поддерживаемый форк viewer с JitPack
-    implementation 'com.github.mhiew:android-pdf-viewer:3.2.0-beta.1'
-    // Pdfium тянем из группы barteksc, не mhiew
-    implementation 'com.github.barteksc:pdfium-android:1.9.0'
+    // Apache POI для работы с DOC и DOCX файлами (требует minSdk 26+)
+    implementation 'org.apache.poi:poi-scratchpad:5.2.3'
+    implementation 'org.apache.poi:poi:5.2.3'
+    implementation 'org.apache.poi:poi-ooxml:5.2.3'
+    
+    // WebView для отображения DOC файлов
     implementation 'com.google.android.material:material:1.12.0'
     coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.0.4"
-    implementation "androidx.core:core:1.13.1"
-
-    // PDFBox из Maven Central
-    implementation 'com.tom-roush:pdfbox-android:2.0.27.0'
-    implementation "androidx.appcompat:appcompat:1.5.1"
+    implementation 'androidx.core:core:1.9.0'
 
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'androidx.activity:activity:1.9.1'
+    implementation 'androidx.recyclerview:recyclerview:1.3.2'
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
 
     implementation 'androidx.cardview:cardview:1.0.0'
-    implementation 'com.itextpdf:itext-pdfa:5.5.10'
-
-    implementation 'com.android.support:multidex:2.0.1'
+    implementation 'androidx.multidex:multidex:2.0.1'
 }

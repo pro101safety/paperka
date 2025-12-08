@@ -10,6 +10,8 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.cardview.widget.CardView;
+import java.io.InputStream;
+import java.io.IOException;
 
 import java.util.List;
 
@@ -22,8 +24,6 @@ public class CustomAdapter extends BaseExpandableListAdapter {
         this.chapterList = chapterList;
         this.context = context;
     }
-
-
 
     //parent size count количество родительских размеров
     @Override
@@ -72,11 +72,11 @@ public class CustomAdapter extends BaseExpandableListAdapter {
 
         ImageView imageView=(ImageView)view.findViewById(R.id.arrow);
 
-        if (b=true)
+        if (b == true)
         {
             imageView.setRotation(90);
         }
-        else if (b==false)
+        else if (b == false)
         {
             imageView.setRotation(0);
         }
@@ -95,12 +95,30 @@ public class CustomAdapter extends BaseExpandableListAdapter {
         CardView cardView=(CardView)view.findViewById(R.id.topicClick);
 
         cardView.setOnClickListener(view1 -> {
+            String fileCode = chapterList.get(i).getTopicsList().get(i1).getFileName();
+            String docTitle = chapterList.get(i).getTopicsList().get(i1).getTopicName();
+            
+            // Проверяем наличие файла с расширениями .doc или .docx
+            String fileName = null;
+            try {
+                InputStream test = context.getAssets().open(fileCode + ".doc");
+                test.close();
+                fileName = fileCode + ".doc";
+            } catch (IOException e1) {
+                try {
+                    InputStream test = context.getAssets().open(fileCode + ".docx");
+                    test.close();
+                    fileName = fileCode + ".docx";
+                } catch (IOException e2) {
+                    android.widget.Toast.makeText(context, "Файл не найден: " + fileCode + ".doc/.docx", android.widget.Toast.LENGTH_SHORT).show();
+                    return;
+                }
+            }
 
             Intent intent =(new Intent(context, FullView.class));
-            intent.putExtra("fileName",chapterList.get(i).getTopicsList().get(i1).getFileName());
+            intent.putExtra("fileName", fileName);
+            intent.putExtra("docTitle", docTitle);
             context.startActivity(intent);
-
-
         });
 
         return view;
@@ -109,4 +127,3 @@ public class CustomAdapter extends BaseExpandableListAdapter {
     @Override
     public boolean isChildSelectable(int i, int i1) { return true; }
 }
-

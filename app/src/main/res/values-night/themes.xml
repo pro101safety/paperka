@@ -1,10 +1,10 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
-    <style name="Theme.Papera" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
-        <!-- Primary brand color. -->
+    <!-- Night theme aligned with Material3 and NoActionBar to match day theme -->
+    <style name="Theme.Papera" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="colorPrimary">@color/purple_200</item>
-
-
-
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="colorSurface">@color/logo_green</item>
     </style>
 </resources>

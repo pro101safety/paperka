@@ -6,8 +6,7 @@
    See https://developer.android.com/about/versions/12/backup-restore
 -->
 <full-backup-content>
-    <!--
-   <include domain="sharedpref" path="."/>
-   <exclude domain="sharedpref" path="device.xml"/>
--->
+    <!-- Включаем все SharedPreferences для резервного копирования -->
+    <!-- Это гарантирует сохранение заметок и закладок при обновлении приложения -->
+    <include domain="sharedpref" path="."/>
 </full-backup-content>

@@ -6,6 +6,28 @@
         android:id="@+id/search"
         android:title="Поиск"
         android:icon="@drawable/ic_baseline_search_24"
-        app:showAsAction="ifRoom|collapseActionView"
-        app:actionViewClass="androidx.appcompat.widget.SearchView"/>
+        app:showAsAction="always" />
+
+    <item
+        android:id="@+id/add_bookmark"
+        android:title="Закладка"
+        android:icon="@drawable/ic_baseline_bookmark_24"
+        app:showAsAction="ifRoom"/>
+
+    <item
+        android:id="@+id/search_options"
+        android:title="Опции поиска"
+        app:showAsAction="never">
+        <menu>
+            <item
+                android:id="@+id/case_sensitive"
+                android:title="Учитывать регистр"
+                android:checkable="true"/>
+            <item
+                android:id="@+id/whole_words"
+                android:title="Только целые слова"
+                android:checkable="true"/>
+        </menu>
+    </item>
+
 </menu>

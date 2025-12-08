@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp">
+
+        <ImageView
+            android:id="@+id/photo_preview"
+            android:layout_width="match_parent"
+            android:layout_height="200dp"
+            android:adjustViewBounds="true"
+            android:scaleType="centerCrop"
+            android:contentDescription="@string/note_photo_content_description"
+            android:src="@drawable/ic_photo_placeholder"
+            android:background="?attr/colorSurfaceVariant" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/photo_note_title"
+            android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
+
+        <EditText
+            android:id="@+id/edit_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/photo_note_title"
+            android:inputType="text"
+            android:maxLines="2"
+            android:minHeight="48dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/photo_note_caption"
+            android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
+
+        <EditText
+            android:id="@+id/edit_caption"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/photo_note_caption"
+            android:inputType="textMultiLine"
+            android:minLines="3"
+            android:gravity="top|start"
+            android:scrollbars="vertical" />
+
+    </LinearLayout>
+
+</ScrollView>
+

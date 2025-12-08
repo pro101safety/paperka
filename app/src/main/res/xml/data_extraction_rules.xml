@@ -5,15 +5,13 @@
 -->
 <data-extraction-rules>
     <cloud-backup>
-        <!-- TODO: Use <include> and <exclude> to control what is backed up.
-        <include .../>
-        <exclude .../>
-        -->
+        <!-- Включаем все SharedPreferences для облачного резервного копирования -->
+        <!-- Это гарантирует сохранение заметок и закладок в облаке -->
+        <include domain="sharedpref" path="."/>
     </cloud-backup>
-    <!--
     <device-transfer>
-        <include .../>
-        <exclude .../>
+        <!-- Включаем все SharedPreferences для передачи между устройствами -->
+        <!-- Это позволяет переносить заметки и закладки на новое устройство -->
+        <include domain="sharedpref" path="."/>
     </device-transfer>
-    -->
 </data-extraction-rules>
