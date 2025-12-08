@@ -10,7 +10,7 @@
 
     <item
         android:id="@+id/bookmarks"
-        android:title="Закладки"/>
+        android:title="Закладки НПА"/>
 
     <item
         android:id="@+id/notes"

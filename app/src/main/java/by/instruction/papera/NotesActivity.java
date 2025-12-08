@@ -12,6 +12,7 @@ import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.View;
 import android.view.ViewGroup;
+import android.text.TextUtils;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -25,11 +26,15 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
+import androidx.core.view.GravityCompat;
+import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.navigation.NavigationView;
 
 import java.io.File;
 import java.io.IOException;
@@ -40,10 +45,21 @@ import java.util.List;
 public class NotesActivity extends AppCompatActivity {
     private static final long MIN_FREE_SPACE_BYTES = 5L * 1024 * 1024; // 5 MB запас
 
+    private MaterialToolbar toolbar;
     private RecyclerView recyclerView;
     private NoteGridAdapter adapter;
+    private DrawerLayout drawerLayout;
+    private NavigationView navigationView;
+    private View emptyFoldersView;
+    private FolderListAdapter folderListAdapter;
+    private RecyclerView folderRecyclerView;
+    private View addFolderButton;
     private List<Note> notes = new ArrayList<>();
     private List<Note> filteredNotes = new ArrayList<>();
+    private List<NoteFolder> folders = new ArrayList<>();
+    private NoteFolder currentFolder;
+    private String currentSearchQuery = "";
+    private boolean isSearchMode = false;
     private ActivityResultLauncher<Uri> takePictureLauncher;
     private ActivityResultLauncher<String> cameraPermissionLauncher;
     private Uri pendingPhotoUri;
@@ -56,7 +72,7 @@ public class NotesActivity extends AppCompatActivity {
 
         androidx.core.view.WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
 
-        MaterialToolbar toolbar = findViewById(R.id.toolbar);
+        toolbar = findViewById(R.id.toolbar);
         if (toolbar != null) {
             toolbar.getMenu().clear();
             toolbar.inflateMenu(R.menu.notes_menu);
@@ -67,9 +83,14 @@ public class NotesActivity extends AppCompatActivity {
                 }
                 return false;
             });
+            toolbar.setNavigationIcon(R.drawable.ic_baseline_menu_24);
+            toolbar.setNavigationOnClickListener(v -> toggleDrawer());
         }
 
         initActivityResultLaunchers();
+        drawerLayout = findViewById(R.id.drawer_layout);
+        navigationView = findViewById(R.id.navigation_view);
+        initFolderControls();
 
         FloatingActionButton fab = findViewById(R.id.fab_add_note);
         if (fab != null) {
@@ -108,34 +129,123 @@ public class NotesActivity extends AppCompatActivity {
         });
     }
 
+    private void initFolderControls() {
+        if (navigationView == null) {
+            return;
+        }
+        View header = navigationView.getHeaderView(0);
+        if (header == null) {
+            header = getLayoutInflater().inflate(R.layout.view_folder_drawer_header, navigationView, false);
+            navigationView.addHeaderView(header);
+        }
+        folderRecyclerView = header.findViewById(R.id.recycler_folders);
+        addFolderButton = header.findViewById(R.id.button_add_folder);
+        emptyFoldersView = header.findViewById(R.id.text_empty_folders);
+
+        folderRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+        folderListAdapter = new FolderListAdapter();
+        folderRecyclerView.setAdapter(folderListAdapter);
+
+        loadFolders();
+
+        if (addFolderButton != null) {
+            addFolderButton.setOnClickListener(v -> showCreateFolderDialog());
+        }
+    }
+
+    private void loadFolders() {
+        folders.clear();
+        folders.addAll(FolderStore.getAllFolders(this));
+        if (folders.isEmpty()) {
+            NoteFolder defaultFolder = FolderStore.ensureDefaultFolder(this);
+            folders.add(defaultFolder);
+        }
+        if (currentFolder == null && !folders.isEmpty()) {
+            currentFolder = folders.get(0);
+        } else if (currentFolder != null) {
+            boolean found = false;
+            for (NoteFolder folder : folders) {
+                if (folder.getId().equals(currentFolder.getId())) {
+                    currentFolder = folder;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found && !folders.isEmpty()) {
+                currentFolder = folders.get(0);
+            }
+        }
+
+        updateFolderHeaderState();
+    }
+    private void updateFolderHeaderState() {
+        if (emptyFoldersView == null || folderRecyclerView == null) {
+            return;
+        }
+        boolean hasFolders = !folders.isEmpty();
+        emptyFoldersView.setVisibility(hasFolders ? View.GONE : View.VISIBLE);
+        folderRecyclerView.setVisibility(hasFolders ? View.VISIBLE : View.GONE);
+        if (folderListAdapter != null) {
+            folderListAdapter.notifyDataSetChanged();
+        }
+        updateToolbarSubtitle();
+    }
+
+    private void selectFolder(NoteFolder folder) {
+        if (folder == null) {
+            return;
+        }
+        currentFolder = folder;
+        refreshFilteredNotes();
+        if (folderListAdapter != null) {
+            folderListAdapter.notifyDataSetChanged();
+        }
+        updateToolbarSubtitle();
+        closeDrawer();
+    }
+
     private void loadNotes() {
         notes.clear();
         notes.addAll(NoteStore.getAllNotes(this));
         // Сортируем по времени: новые сверху
         Collections.sort(notes, (a, b) -> Long.compare(b.getTimestamp(), a.getTimestamp()));
-        filteredNotes.clear();
-        filteredNotes.addAll(notes);
+        refreshFilteredNotes();
     }
 
     private void applyFilter(String query) {
-        String searchText = (query == null) ? "" : query.trim().toLowerCase();
+        String normalized = query == null ? "" : query.trim();
+        isSearchMode = !TextUtils.isEmpty(normalized);
+        currentSearchQuery = normalized.toLowerCase();
+        refreshFilteredNotes();
+    }
+
+    private void refreshFilteredNotes() {
         filteredNotes.clear();
-        
-        if (searchText.isEmpty()) {
-            filteredNotes.addAll(notes);
-        } else {
-            for (Note note : notes) {
+        String folderId = getCurrentFolderId();
+        String searchText = currentSearchQuery == null ? "" : currentSearchQuery;
+        boolean filterByFolder = !isSearchMode;
+
+        for (Note note : notes) {
+            if (filterByFolder && folderId != null && !folderId.equals(note.getFolderId())) {
+                continue;
+            }
+            if (!searchText.isEmpty()) {
                 String title = note.getTitle() == null ? "" : note.getTitle().toLowerCase();
                 String content = note.getContent() == null ? "" : note.getContent().toLowerCase();
-                if (title.contains(searchText) || content.contains(searchText)) {
-                    filteredNotes.add(note);
+                if (!title.contains(searchText) && !content.contains(searchText)) {
+                    continue;
                 }
             }
+            filteredNotes.add(note);
         }
-        
+
         if (adapter != null) {
             adapter.notifyDataSetChanged();
         }
+        if (folderListAdapter != null) {
+            folderListAdapter.notifyDataSetChanged();
+        }
+        updateToolbarSubtitle();
     }
     
     // Диалог поиска
@@ -169,12 +279,9 @@ public class NotesActivity extends AppCompatActivity {
         
         // Кнопка "Очистить"
         builder.setNeutralButton("Очистить", (dialog, which) -> {
-            // Очищаем результаты поиска
-            filteredNotes.clear();
-            filteredNotes.addAll(notes);
-            if (adapter != null) {
-                adapter.notifyDataSetChanged();
-            }
+            currentSearchQuery = "";
+            isSearchMode = false;
+            refreshFilteredNotes();
         });
         
         AlertDialog dialog = builder.create();
@@ -287,7 +394,8 @@ public class NotesActivity extends AppCompatActivity {
                     content,
                     System.currentTimeMillis(),
                     Note.Type.TEXT,
-                    null
+                    null,
+                    getCurrentFolderId()
                 );
                 NoteStore.saveNote(this, newNote);
             } else {
@@ -302,7 +410,6 @@ public class NotesActivity extends AppCompatActivity {
             }
 
             loadNotes();
-            adapter.notifyDataSetChanged();
             dialog.dismiss();
         });
     }
@@ -358,13 +465,13 @@ public class NotesActivity extends AppCompatActivity {
                     caption,
                     System.currentTimeMillis(),
                     Note.Type.PHOTO,
-                    imagePath
+                    imagePath,
+                    getCurrentFolderId()
             );
             NoteStore.saveNote(this, photoNote);
             pendingPhotoPath = null;
             pendingPhotoUri = null;
             loadNotes();
-            adapter.notifyDataSetChanged();
             dialog.dismiss();
         });
     }
@@ -379,7 +486,6 @@ public class NotesActivity extends AppCompatActivity {
                     deleteFileSilently(note.getImagePath());
                 }
                 loadNotes();
-                adapter.notifyDataSetChanged();
                 Toast.makeText(this, "Заметка удалена", Toast.LENGTH_SHORT).show();
             })
             .setNegativeButton("Отмена", null)
@@ -478,6 +584,73 @@ public class NotesActivity extends AppCompatActivity {
         }
     }
 
+    private class FolderListAdapter extends RecyclerView.Adapter<FolderListAdapter.FolderViewHolder> {
+
+        @NonNull
+        @Override
+        public FolderViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_folder_row, parent, false);
+            return new FolderViewHolder(view);
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull FolderViewHolder holder, int position) {
+            holder.bind(folders.get(position));
+        }
+
+        @Override
+        public int getItemCount() {
+            return folders.size();
+        }
+
+        class FolderViewHolder extends RecyclerView.ViewHolder {
+            private final TextView title;
+            private final TextView count;
+            private final View deleteButton;
+
+            FolderViewHolder(@NonNull View itemView) {
+                super(itemView);
+                title = itemView.findViewById(R.id.folder_title);
+                count = itemView.findViewById(R.id.folder_count);
+                deleteButton = itemView.findViewById(R.id.button_delete_folder);
+                itemView.setOnClickListener(v -> {
+                    int position = getBindingAdapterPosition();
+                    if (position != RecyclerView.NO_POSITION) {
+                        selectFolder(folders.get(position));
+                    }
+                });
+                itemView.setOnLongClickListener(v -> {
+                    int position = getBindingAdapterPosition();
+                    if (position != RecyclerView.NO_POSITION) {
+                        NoteFolder folder = folders.get(position);
+                        showDeleteFolderDialog(folder);
+                    }
+                    return true;
+                });
+                if (deleteButton != null) {
+                    deleteButton.setOnClickListener(v -> {
+                        int position = getBindingAdapterPosition();
+                        if (position != RecyclerView.NO_POSITION) {
+                            NoteFolder folder = folders.get(position);
+                            showDeleteFolderDialog(folder);
+                        }
+                    });
+                }
+            }
+
+            void bind(NoteFolder folder) {
+                title.setText(folder.getName());
+                int notesCount = getNoteCountForFolder(folder.getId());
+                count.setText(getString(R.string.folder_notes_count, notesCount));
+                boolean isDefault = FolderStore.DEFAULT_FOLDER_ID.equals(folder.getId());
+                if (deleteButton != null) {
+                    deleteButton.setVisibility(isDefault ? View.GONE : View.VISIBLE);
+                }
+                itemView.setActivated(currentFolder != null && currentFolder.getId().equals(folder.getId()));
+            }
+        }
+    }
+
     private void showPhotoDetails(Note note) {
         View view = LayoutInflater.from(this).inflate(R.layout.dialog_photo_note, null, false);
         ImageView preview = view.findViewById(R.id.photo_preview);
@@ -516,7 +689,6 @@ public class NotesActivity extends AppCompatActivity {
             note.setType(Note.Type.PHOTO);
             NoteStore.saveNote(this, note);
             loadNotes();
-            adapter.notifyDataSetChanged();
             dialog.dismiss();
         });
     }
@@ -562,6 +734,98 @@ public class NotesActivity extends AppCompatActivity {
                 file.delete();
             }
         } catch (Exception ignored) { }
+    }
+
+    private void showCreateFolderDialog() {
+        View view = LayoutInflater.from(this).inflate(R.layout.dialog_folder_create, null, false);
+        EditText folderNameField = view.findViewById(R.id.edit_folder_name);
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(getString(R.string.add_folder))
+                .setView(view)
+                .setPositiveButton("Создать", null)
+                .setNegativeButton("Отмена", null)
+                .create();
+
+        dialog.show();
+        dialog.getButton(DialogInterface.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String name = folderNameField.getText().toString().trim();
+            if (name.isEmpty()) {
+                Toast.makeText(this, getString(R.string.folder_name_required), Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (FolderStore.folderNameExists(this, name)) {
+                Toast.makeText(this, getString(R.string.folder_name_exists), Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            NoteFolder folder = new NoteFolder(FolderStore.generateFolderId(), name, System.currentTimeMillis());
+            FolderStore.saveFolder(this, folder);
+            currentFolder = folder;
+            loadFolders();
+            refreshFilteredNotes();
+            dialog.dismiss();
+            closeDrawer();
+        });
+    }
+
+    private String getCurrentFolderId() {
+        return currentFolder == null ? FolderStore.DEFAULT_FOLDER_ID : currentFolder.getId();
+    }
+
+    private void closeDrawer() {
+        if (drawerLayout != null) {
+            drawerLayout.closeDrawer(GravityCompat.START, true);
+        }
+    }
+
+    private void updateToolbarSubtitle() {
+        if (toolbar == null) {
+            return;
+        }
+        toolbar.setSubtitle(currentFolder == null ? null : currentFolder.getName());
+    }
+
+    private int getNoteCountForFolder(String folderId) {
+        if (folderId == null) {
+            folderId = FolderStore.DEFAULT_FOLDER_ID;
+        }
+        int count = 0;
+        for (Note note : notes) {
+            if (folderId.equals(note.getFolderId())) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private void showDeleteFolderDialog(NoteFolder folder) {
+        if (folder == null || FolderStore.DEFAULT_FOLDER_ID.equals(folder.getId())) {
+            return;
+        }
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.delete_folder_confirm_title)
+                .setMessage(R.string.delete_folder_confirm_message)
+                .setPositiveButton(R.string.delete_folder_button, (dialog, which) -> {
+                    NoteStore.deleteNotesInFolder(this, folder.getId());
+                    FolderStore.deleteFolder(this, folder.getId());
+                    loadFolders();
+                    loadNotes();
+                    dialog.dismiss();
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private void toggleDrawer() {
+        if (drawerLayout == null) {
+            return;
+        }
+        if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
+            drawerLayout.closeDrawer(GravityCompat.START);
+        } else {
+            drawerLayout.openDrawer(GravityCompat.START);
+        }
     }
 
     private static class SpacingItemDecoration extends RecyclerView.ItemDecoration {

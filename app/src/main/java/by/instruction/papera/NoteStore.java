@@ -7,6 +7,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -42,7 +43,8 @@ public class NoteStore {
                 } catch (IllegalArgumentException e) {
                     type = Note.Type.TEXT;
                 }
-                notes.add(new Note(id, title, content, timestamp, type, imagePath));
+                String folderId = obj.optString("folderId", Note.DEFAULT_FOLDER_ID);
+                notes.add(new Note(id, title, content, timestamp, type, imagePath, folderId));
             }
         } catch (JSONException e) {
             // Ignore
@@ -54,6 +56,9 @@ public class NoteStore {
     public static void saveNote(Context context, Note note) {
         if (note.getType() == null) {
             note.setType(note.hasPhoto() ? Note.Type.PHOTO : Note.Type.TEXT);
+        }
+        if (note.getFolderId() == null || note.getFolderId().isEmpty()) {
+            note.setFolderId(Note.DEFAULT_FOLDER_ID);
         }
         List<Note> notes = getAllNotes(context);
         
@@ -85,6 +90,31 @@ public class NoteStore {
         }
         saveAllNotes(context, filtered);
     }
+
+    public static void deleteNotesInFolder(Context context, String folderId) {
+        if (folderId == null) {
+            folderId = Note.DEFAULT_FOLDER_ID;
+        }
+        List<Note> notes = getAllNotes(context);
+        List<Note> filtered = new ArrayList<>();
+        for (Note note : notes) {
+            if (!folderId.equals(note.getFolderId())) {
+                filtered.add(note);
+            } else if (note.hasPhoto()) {
+                try {
+                    String path = note.getImagePath();
+                    if (path != null) {
+                        File file = new File(path);
+                        if (file.exists()) {
+                            file.delete();
+                        }
+                    }
+                } catch (Exception ignored) {
+                }
+            }
+        }
+        saveAllNotes(context, filtered);
+    }
     
     private static void saveAllNotes(Context context, List<Note> notes) {
         JSONArray arr = new JSONArray();
@@ -96,6 +126,7 @@ public class NoteStore {
                 obj.put("content", note.getContent());
                 obj.put("timestamp", note.getTimestamp());
                 obj.put("type", note.getType() == null ? Note.Type.TEXT.name() : note.getType().name());
+                obj.put("folderId", note.getFolderId());
                 if (note.getImagePath() != null) {
                     obj.put("imagePath", note.getImagePath());
                 } else {

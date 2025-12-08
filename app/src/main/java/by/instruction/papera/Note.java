@@ -5,6 +5,7 @@ import java.util.Date;
 import java.util.Locale;
 
 public class Note {
+    public static final String DEFAULT_FOLDER_ID = "folder_default";
     public enum Type {
         TEXT,
         PHOTO
@@ -16,18 +17,24 @@ public class Note {
     private long timestamp;
     private Type type;
     private String imagePath;
+    private String folderId;
     
     public Note(String id, String title, String content, long timestamp) {
-        this(id, title, content, timestamp, Type.TEXT, null);
+        this(id, title, content, timestamp, Type.TEXT, null, DEFAULT_FOLDER_ID);
     }
 
     public Note(String id, String title, String content, long timestamp, Type type, String imagePath) {
+        this(id, title, content, timestamp, type, imagePath, DEFAULT_FOLDER_ID);
+    }
+
+    public Note(String id, String title, String content, long timestamp, Type type, String imagePath, String folderId) {
         this.id = id;
         this.title = title;
         this.content = content;
         this.timestamp = timestamp;
         this.type = type == null ? Type.TEXT : type;
         this.imagePath = imagePath;
+        this.folderId = (folderId == null || folderId.isEmpty()) ? DEFAULT_FOLDER_ID : folderId;
     }
     
     public String getId() {
@@ -80,6 +87,14 @@ public class Note {
 
     public boolean hasPhoto() {
         return type == Type.PHOTO && imagePath != null && !imagePath.isEmpty();
+    }
+
+    public String getFolderId() {
+        return folderId == null || folderId.isEmpty() ? DEFAULT_FOLDER_ID : folderId;
+    }
+
+    public void setFolderId(String folderId) {
+        this.folderId = folderId;
     }
     
     public String getDate() {

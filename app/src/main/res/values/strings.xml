@@ -10,4 +10,16 @@
     <string name="note_photo_content_description">Фото заметки</string>
     <string name="photo_note_title">Название фото</string>
     <string name="photo_note_caption">Комментарий</string>
+    <string name="notes_folder_label">Папка</string>
+    <string name="add_folder">Новая папка</string>
+    <string name="folder_name_label">Название папки</string>
+    <string name="folder_name_hint">Например, Отчёты</string>
+    <string name="folder_name_exists">Папка с таким названием уже есть</string>
+    <string name="folder_name_required">Введите название папки</string>
+    <string name="folders_empty">Папки пока не созданы</string>
+    <string name="folder_notes_count">%d заметок</string>
+    <string name="delete_folder">Удалить папку</string>
+    <string name="delete_folder_confirm_title">Удалить папку?</string>
+    <string name="delete_folder_confirm_message">Все заметки и фото в этой папке будут удалены без возможности восстановления.</string>
+    <string name="delete_folder_button">Удалить</string>
 </resources>

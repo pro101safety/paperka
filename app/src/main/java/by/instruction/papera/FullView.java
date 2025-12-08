@@ -706,16 +706,6 @@ public class FullView extends AppCompatActivity {
                 );
             });
             return true;
-        } else if (id == R.id.case_sensitive) {
-            caseSensitive = !caseSensitive;
-            item.setChecked(caseSensitive);
-            Toast.makeText(this, "Учет регистра: " + (caseSensitive ? "включен" : "выключен"), Toast.LENGTH_SHORT).show();
-            return true;
-        } else if (id == R.id.whole_words) {
-            wholeWordsOnly = !wholeWordsOnly;
-            item.setChecked(wholeWordsOnly);
-            Toast.makeText(this, "Поиск по целым словам: " + (wholeWordsOnly ? "включен" : "выключен"), Toast.LENGTH_SHORT).show();
-            return true;
         }
         return super.onOptionsItemSelected(item);
     }

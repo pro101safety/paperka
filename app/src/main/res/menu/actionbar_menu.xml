@@ -14,20 +14,4 @@
         android:icon="@drawable/ic_baseline_bookmark_24"
         app:showAsAction="ifRoom"/>
 
-    <item
-        android:id="@+id/search_options"
-        android:title="Опции поиска"
-        app:showAsAction="never">
-        <menu>
-            <item
-                android:id="@+id/case_sensitive"
-                android:title="Учитывать регистр"
-                android:checkable="true"/>
-            <item
-                android:id="@+id/whole_words"
-                android:title="Только целые слова"
-                android:checkable="true"/>
-        </menu>
-    </item>
-
 </menu>
