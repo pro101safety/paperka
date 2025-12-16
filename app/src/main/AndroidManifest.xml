@@ -32,6 +32,10 @@
             android:name=".FullView"
             android:exported="false" />
         <activity
+            android:name=".game.IotGameActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Papera" />
+        <activity
             android:name=".BookmarksActivity"
             android:exported="false"
             android:theme="@style/Theme.Papera" />

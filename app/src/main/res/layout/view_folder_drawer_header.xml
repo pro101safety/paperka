@@ -23,7 +23,7 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
-        android:text="@string/add_folder"
+        android:text="Создать"
         app:icon="@drawable/ic_baseline_create_new_folder_24"
         app:iconPadding="8dp"
         app:iconGravity="textStart" />

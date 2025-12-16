@@ -249,7 +249,7 @@ public class MainActivity extends AppCompatActivity {
         topicsList.add(new Topics("3.2. Положения о комиссиях для ПЗ по ОТ №210", "t91"));
         topicsList.add(new Topics("3.3. 2025!Перечень профессий для подготовки рабочих №7/14", "t92"));
         topicsList.add(new Topics("3.4. Стажировка водителей транспортных средств №46", "t93"));
-        topicsList.add(new Topics("3.5. Перечень профессий рабочих - разрды после переподготовки №84/63", "t94"));
+        topicsList.add(new Topics("3.5. Перечень профессий рабочих - разряды после переподготовки №84/63", "t94"));
         chapterList.add(new Chapter("3. Обучение, инструктажи и ПЗ по ОТ", topicsList));
 
         //chapter 4 t100~104
@@ -589,6 +589,9 @@ public class MainActivity extends AppCompatActivity {
                 return true;
             case R.id.notes:
                 startActivity(new Intent(MainActivity.this, NotesActivity.class));
+                return true;
+            case R.id.iot_game:
+                startActivity(new Intent(MainActivity.this, by.instruction.papera.game.IotGameActivity.class));
                 return true;
             case R.id.search:
                 // Показываем диалог поиска

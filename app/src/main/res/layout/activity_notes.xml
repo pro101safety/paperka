@@ -20,7 +20,7 @@
                 android:layout_height="wrap_content"
                 android:background="?attr/colorSurface"
                 android:fitsSystemWindows="true"
-                app:title="Я Инспектор по ОТ" />
+                app:title="Блокнот ИОТа" />
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/recyclerView"

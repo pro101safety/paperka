@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <by.instruction.papera.game.IotGameView
+        android:id="@+id/iotGameView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <LinearLayout
+        android:id="@+id/startPanel"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:background="#CCFFFFFF"
+        android:padding="24dp">
+
+        <TextView
+            android:id="@+id/startTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+        android:text="Если ходить по стройке без каски, то она прослужит вам до конца жизни"
+            android:textColor="#000000"
+            android:textSize="20sp"
+            android:gravity="center"
+            android:paddingBottom="16dp" />
+
+        <Button
+            android:id="@+id/startButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="СТАРТ" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/gameTimer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="12dp"
+        android:padding="8dp"
+        android:text="00:00"
+        android:textColor="#000000"
+        android:textSize="18sp"
+        android:background="#33FFFFFF"
+        android:layout_gravity="start|top" />
+
+    <TextView
+        android:id="@+id/helmetInfo"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_marginTop="52dp"
+        android:padding="6dp"
+        android:text="Каска: нет"
+        android:textColor="#000000"
+        android:textSize="14sp"
+        android:background="#22FFFFFF"
+        android:layout_gravity="start|top" />
+
+    <TextView
+        android:id="@+id/warningBubble"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="96dp"
+        android:layout_gravity="center_horizontal|top"
+        android:padding="10dp"
+        android:background="@drawable/bubble_bg"
+        android:text="Осторожно! Кирпичи!"
+        android:textColor="#000000"
+        android:textSize="16sp"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:id="@+id/resultPanel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:padding="16dp"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:background="#CCFFFFFF"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/resultTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Игра окончена"
+            android:textColor="#000000"
+            android:textSize="20sp"
+            android:paddingBottom="8dp" />
+
+        <TextView
+            android:id="@+id/resultTime"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Время: 00:00"
+            android:textColor="#000000"
+            android:textSize="18sp"
+            android:paddingBottom="8dp" />
+
+        <TextView
+            android:id="@+id/recordsList"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Рекорды:"
+            android:textColor="#000000"
+            android:textSize="16sp"
+            android:paddingBottom="12dp" />
+
+        <Button
+            android:id="@+id/restartButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Сыграть снова" />
+
+        <Button
+            android:id="@+id/exitButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="В меню"
+            android:layout_marginTop="8dp" />
+
+    </LinearLayout>
+
+</FrameLayout>
+
