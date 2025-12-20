@@ -577,29 +577,30 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-        switch (item.getItemId()) {
-            case R.id.privacy:
-                startActivity(new Intent(MainActivity.this, Privacy.class));
-                return true;
-            case R.id.contact:
-                startActivity(new Intent(MainActivity.this, Contact.class));
-                return true;
-            case R.id.bookmarks:
-                startActivity(new Intent(MainActivity.this, BookmarksActivity.class));
-                return true;
-            case R.id.notes:
-                startActivity(new Intent(MainActivity.this, NotesActivity.class));
-                return true;
-            case R.id.iot_game:
-                startActivity(new Intent(MainActivity.this, by.instruction.papera.game.IotGameActivity.class));
-                return true;
-            case R.id.search:
-                // Показываем диалог поиска
-                showSearchDialog();
-                return true;
-            default:
-                return super.onOptionsItemSelected(item);
+        int id = item.getItemId();
+
+        if (id == R.id.privacy) {
+            startActivity(new Intent(MainActivity.this, Privacy.class));
+            return true;
+        } else if (id == R.id.contact) {
+            startActivity(new Intent(MainActivity.this, Contact.class));
+            return true;
+        } else if (id == R.id.bookmarks) {
+            startActivity(new Intent(MainActivity.this, BookmarksActivity.class));
+            return true;
+        } else if (id == R.id.notes) {
+            startActivity(new Intent(MainActivity.this, NotesActivity.class));
+            return true;
+        } else if (id == R.id.iot_game) {
+            startActivity(new Intent(MainActivity.this, by.instruction.papera.game.IotGameActivity.class));
+            return true;
+        } else if (id == R.id.search) {
+            // Показываем диалог поиска
+            showSearchDialog();
+            return true;
         }
+
+        return super.onOptionsItemSelected(item);
     }
 
     //начало кода системной кнопки назад

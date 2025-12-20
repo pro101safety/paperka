@@ -7,8 +7,8 @@ android {
         applicationId "by.instruction.papera"
         minSdk 26
         targetSdk 35
-        versionCode 63
-        versionName "5.1.0."
+        versionCode 64
+        versionName "5.1.1."
 
 // Поддержка страниц памяти 16 КБ
         ndk {
@@ -36,6 +36,10 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
         coreLibraryDesugaringEnabled true
+    }
+
+    buildFeatures {
+        buildConfig true
     }
 
     namespace 'by.instruction.papera'
