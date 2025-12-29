@@ -22,4 +22,5 @@
     <string name="delete_folder_confirm_title">Удалить папку?</string>
     <string name="delete_folder_confirm_message">Все заметки и фото в этой папке будут удалены без возможности восстановления.</string>
     <string name="delete_folder_button">Удалить</string>
+    <string name="new_year_hat">Новогодняя шапочка</string>
 </resources>

@@ -16,7 +16,9 @@
         android:background="?attr/colorSurface"
         android:fitsSystemWindows="true"
         app:title=""
-        app:titleTextAppearance="@style/CustomToolbarTitle" />
+        app:titleTextAppearance="@style/CustomToolbarTitle"
+        app:logo="@drawable/ic_santa_hat"
+        app:logoDescription="@string/new_year_hat" />
 
     <ExpandableListView
         android:id="@+id/expandableListView"

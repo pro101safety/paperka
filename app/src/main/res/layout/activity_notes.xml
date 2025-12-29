@@ -20,7 +20,9 @@
                 android:layout_height="wrap_content"
                 android:background="?attr/colorSurface"
                 android:fitsSystemWindows="true"
-                app:title="Блокнот ИОТа" />
+                app:title="Блокнот ИОТа"
+                app:logo="@drawable/ic_santa_hat"
+                app:logoDescription="@string/new_year_hat" />
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/recyclerView"

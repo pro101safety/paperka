@@ -8,7 +8,7 @@ android {
         minSdk 26
         targetSdk 35
         versionCode 64
-        versionName "5.1.1."
+        versionName "5.1.1"
 
 // Поддержка страниц памяти 16 КБ
         ndk {
