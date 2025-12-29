@@ -594,6 +594,9 @@ public class MainActivity extends AppCompatActivity {
         } else if (id == R.id.iot_game) {
             startActivity(new Intent(MainActivity.this, by.instruction.papera.game.IotGameActivity.class));
             return true;
+        } else if (id == R.id.tetris) {
+            startActivity(new Intent(MainActivity.this, by.instruction.papera.tetris.TetrisActivity.class));
+            return true;
         } else if (id == R.id.search) {
             // Показываем диалог поиска
             showSearchDialog();
