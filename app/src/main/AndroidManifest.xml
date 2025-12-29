@@ -35,10 +35,6 @@
             android:exported="false"
             android:theme="@style/Theme.Papera" />
         <activity
-            android:name=".tetris.TetrisActivity"
-            android:exported="false"
-            android:theme="@style/Theme.Papera" />
-        <activity
             android:name=".BookmarksActivity"
             android:exported="false"
             android:theme="@style/Theme.Papera" />
