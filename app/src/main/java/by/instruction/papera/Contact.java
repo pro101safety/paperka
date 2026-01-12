@@ -35,5 +35,26 @@ public class Contact extends AppCompatActivity {
                 }
             });
         }
+
+        TextView pro101Link = findViewById(R.id.pro101_link);
+        if (pro101Link != null) {
+            pro101Link.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    String url = "https://play.google.com/store/apps/details?id=by.instruction.planer";
+                    Intent intent = new Intent(Intent.ACTION_VIEW);
+                    intent.setData(Uri.parse(url));
+                    // Пытаемся открыть в Google Play Store
+                    intent.setPackage("com.android.vending");
+                    try {
+                        startActivity(intent);
+                    } catch (android.content.ActivityNotFoundException e) {
+                        // Если Google Play не установлен, открываем в браузере
+                        intent.setPackage(null);
+                        startActivity(intent);
+                    }
+                }
+            });
+        }
     }
 }
