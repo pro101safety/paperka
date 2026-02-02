@@ -10,9 +10,7 @@
         android:background="?attr/colorSurface"
         android:fitsSystemWindows="true"
         app:title=""
-        app:titleTextAppearance="@style/CustomToolbarTitle"
-        app:logo="@drawable/ic_santa_hat"
-        app:logoDescription="@string/new_year_hat" />
+        app:titleTextAppearance="@style/CustomToolbarTitle" />
 
     <!-- Кнопки навигации по результатам поиска -->
     <LinearLayout

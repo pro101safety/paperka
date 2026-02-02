@@ -11,9 +11,7 @@
         android:layout_height="wrap_content"
         android:background="?attr/colorSurface"
         android:fitsSystemWindows="true"
-        app:title="Закладки"
-        app:logo="@drawable/ic_santa_hat"
-        app:logoDescription="@string/new_year_hat" />
+        app:title="Закладки" />
 
     <ListView
         android:id="@+id/listView"
