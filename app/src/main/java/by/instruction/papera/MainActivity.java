@@ -196,9 +196,9 @@ public class MainActivity extends AppCompatActivity {
         topicsList.add(new Topics("1. Конституция Республики Беларусь", "t001"));
         topicsList.add(new Topics("1.1. Закон об охране труда №356-З", "t01"));
         topicsList.add(new Topics("1.2. Трудовой кодекс Республики Беларусь", "t02"));
-        topicsList.add(new Topics("1.3. 2025!Кодекс об административных правонарушениях", "t03"));
-        topicsList.add(new Topics("1.4. 2025!Уголовный кодекс Республики Беларусь ст.1-308", "t04"));
-        topicsList.add(new Topics("1.4. 2025!Уголовный кодекс Республики Беларусь ст.309-466", "t411"));
+        topicsList.add(new Topics("1.3. Кодекс об административных правонарушениях", "t03"));
+        topicsList.add(new Topics("1.4. Уголовный кодекс Республики Беларусь ст.1-308", "t04"));
+        topicsList.add(new Topics("1.4. Уголовный кодекс Республики Беларусь ст.309-466", "t411"));
         topicsList.add(new Topics("1.5. Декрет №7 О развитии предпринимательства", "t05"));
         topicsList.add(new Topics("1.6. Закон о пожарной безопасности №2403-XII", "t06"));
         topicsList.add(new Topics("1.7. Закон о радиационной безопасности №198-З", "t07"));
@@ -211,27 +211,26 @@ public class MainActivity extends AppCompatActivity {
 
         //chapter 2 t11~89
         topicsList = new ArrayList<>();
-        topicsList.add(new Topics("2.1. 2025!Правила по охране труда №53", "t11"));
+        topicsList.add(new Topics("2.1. Правила по охране труда №53", "t11"));
         topicsList.add(new Topics("2.2. МПОТ погрузочно-разгрузочные №12", "t12"));
         topicsList.add(new Topics("2.3. МПОТ при холодной обработке металлов №24/11", "t13"));
         topicsList.add(new Topics("2.4. ПОТ авто и горэлектро транспорт №78/104", "t14"));
         topicsList.add(new Topics("2.5. ПОТ при работе на высоте №52", "t15"));
-        topicsList.add(new Topics("2.5.1. С 2026!ПОТ при работе на высоте №11", "t27"));
+        topicsList.add(new Topics("2.5.1. С 26.04.2026!ПОТ при работе на высоте №11", "t27"));
         topicsList.add(new Topics("2.6. МПОТ мобильные подъемные рабочие платформы №78", "t16"));
         topicsList.add(new Topics("2.7. МПОТ напольный безрельс и грузовые тележки №165", "t17"));
         topicsList.add(new Topics("2.8. ПОТ в сельском и рыбном хозяйствах №29/44", "t18"));
         topicsList.add(new Topics("2.9. ПОТ при выполнении строительный работ №24/33", "t19"));
         topicsList.add(new Topics("2.10. ПОТ лесное хозяйство, обработка древесины №32/5", "t20"));
-        topicsList.add(new Topics("2.10. ПОТ лесное хозяйство, обработка древесины №32/5", "t21"));
         topicsList.add(new Topics("2.13. ПОТ при производстве пищевой продукции №122", "t23"));
-        topicsList.add(new Topics("2.14. 2025!ПОТ при проведении полиграфических работ №84/11", "t24"));
+        topicsList.add(new Topics("2.14. ПОТ при проведении полиграфических работ №84/11", "t24"));
         topicsList.add(new Topics("2.15. МПОТ промышленный альпинизм №184", "t25"));
         topicsList.add(new Topics("2.16. ПОТ при производстве резиновых и пластмассовых изделий №20", "t26"));
         topicsList.add(new Topics("2.18. МПОТ при эксплуатации строительных подъемников №12/2", "t28"));
         topicsList.add(new Topics("2.19. МПОТ при термической обработке металлов №99/9", "t29"));
-        topicsList.add(new Topics("2.20. 2025!МПОТ при эксплуатации конвейерных, трубопроводных и др. №88", "t30"));
+        topicsList.add(new Topics("2.20. МПОТ при эксплуатации конвейерных, трубопроводных и др. №88", "t30"));
         topicsList.add(new Topics("2.21. 2026!ПОТ при эксплуатации систем медицинского газоснабжения №130/181", "t31"));
-        topicsList.add(new Topics("2.23. 2025!ПОТ при оказании психиатрической помощи №86/89", "t33"));
+        topicsList.add(new Topics("2.23. ПОТ при оказании психиатрической помощи №86/89", "t33"));
         topicsList.add(new Topics("2.25. МПОТ при работе с химвеществами, проявляющими опасные свойства №90/9", "t35"));
         topicsList.add(new Topics("2.33. ПОТ при выполнении работ на объектах радиосвязи №7/3", "t43"));
         topicsList.add(new Topics("2.42. ПОТ для зоопарков №33", "t52"));
@@ -249,7 +248,7 @@ public class MainActivity extends AppCompatActivity {
         topicsList = new ArrayList<>();
         topicsList.add(new Topics("3.1. Инструкция обучения, инструктажа и ПЗ по ОТ №175", "t90"));
         topicsList.add(new Topics("3.2. Положения о комиссиях для ПЗ по ОТ №210", "t91"));
-        topicsList.add(new Topics("3.3. 2025!Перечень профессий для подготовки рабочих №7/14", "t92"));
+        topicsList.add(new Topics("3.3. Перечень профессий для подготовки рабочих №7/14", "t92"));
         topicsList.add(new Topics("3.4. Стажировка водителей транспортных средств №46", "t93"));
         topicsList.add(new Topics("3.5. Перечень профессий рабочих - разряды после переподготовки №84/63", "t94"));
         chapterList.add(new Chapter("3. Обучение, инструктажи и ПЗ по ОТ", topicsList));
@@ -279,7 +278,7 @@ public class MainActivity extends AppCompatActivity {
         //chapter 7 t125~129
         topicsList = new ArrayList<>();
         topicsList.add(new Topics("7.1. Правила расследования НС №30", "t125"));
-        topicsList.add(new Topics("7.2. 2025!Формы документов для расследования НС №81/144", "t126"));
+        topicsList.add(new Topics("7.2. Формы документов для расследования НС №81/144", "t126"));
         topicsList.add(new Topics("7.3. Правила определения тяжести производственных травм №9", "t127"));
         topicsList.add(new Topics("7.4. Соглашение о расследовании НС ЕАЭС №80", "t128"));
         topicsList.add(new Topics("7.5. О вынесении требования по спецрасследованию НС №5", "t129"));
@@ -302,8 +301,8 @@ public class MainActivity extends AppCompatActivity {
         //chapter 10 t150~170
         topicsList = new ArrayList<>();
         topicsList.add(new Topics("10.1. Порядок осуществления общественного контроля №180", "t150"));
-        topicsList.add(new Topics("10.2. 2025!Положение о технической инспекции труда ФПБ №153", "t151"));
-        topicsList.add(new Topics("10.3. 2025!Порядок участия профсоюзов в расследовании НС №87", "t152"));
+        topicsList.add(new Topics("10.2. 2026!Положение о технической инспекции труда ФПБ №5", "t151"));
+        topicsList.add(new Topics("10.3. Порядок участия профсоюзов в расследовании НС №87", "t152"));
         topicsList.add(new Topics("10.4. Указ об общественном контроле №240", "t153"));
         topicsList.add(new Topics("10.5. Положение об общественном инспекторе по ОТ №132", "t154"));
         topicsList.add(new Topics("10.7. ЛПА по ОТ для согласования с профсоюзом", "t156"));
@@ -325,15 +324,15 @@ public class MainActivity extends AppCompatActivity {
         topicsList.add(new Topics("11.3. О нормах подъёма женщинами №133", "t172"));
         topicsList.add(new Topics("11.4. Запрещённые работы для женщин №35", "t173"));
         topicsList.add(new Topics("11.5. О нормах подъема детьми №134", "t174"));
-        topicsList.add(new Topics("11.6. 2025!Запрет на труд до 18 лет №12", "t175"));
-        topicsList.add(new Topics("11.7. 2025!Лёгкие работы от 14 до 16 лет №144", "t176"));
+        topicsList.add(new Topics("11.6. Запрет на труд до 18 лет №12", "t175"));
+        topicsList.add(new Topics("11.7. Лёгкие работы от 14 до 16 лет №144", "t176"));
         topicsList.add(new Topics("11.8. Сроки хранения ЛПА по ОТ", "t177"));
         chapterList.add(new Chapter("11. Организация охраны труда", topicsList));
 
         //chapter 12 t180~
         topicsList = new ArrayList<>();
         topicsList.add(new Topics("12.1. Порядок аттестации по условиям труда №253", "t180"));
-        topicsList.add(new Topics("12.2. 2025!Инструкция по оценке условий труда №35", "t181"));
+        topicsList.add(new Topics("12.2. Инструкция по оценке условий труда №35", "t181"));
         topicsList.add(new Topics("12.3. Оценка тяжести и напряжённости труда №027-2012", "t182"));
         topicsList.add(new Topics("12.5. Списки №1 и №2. Пост. №536", "t184"));
         topicsList.add(new Topics("12.5. Как применять Списки №1 и №2. Пост. №86", "t185"));
@@ -341,7 +340,7 @@ public class MainActivity extends AppCompatActivity {
 
         //chapter 13 t190~
         topicsList = new ArrayList<>();
-        topicsList.add(new Topics("13.1. Об обеспечении пожарной безопасности №82", "t190"));
+        topicsList.add(new Topics("13.1. 2026! Об обеспечении пожарной безопасности №61", "t190"));
         topicsList.add(new Topics("13.2. О внештатных пожарных формированиях №296", "t191"));
         topicsList.add(new Topics("13.3. Спецтребования по ПБ прибывание детей №561", "t192"));
         topicsList.add(new Topics("13.4. Спецтребования ПБ взрыво-пожароопасных производств №779", "t193"));
@@ -388,16 +387,16 @@ public class MainActivity extends AppCompatActivity {
 
         //chapter 18 t260~
         topicsList = new ArrayList<>();
-        topicsList.add(new Topics("18.1. 2025!Указ О СТРАХОВАНИИ №108", "t260"));
+        topicsList.add(new Topics("18.1. Указ О СТРАХОВАНИИ №108", "t260"));
         topicsList.add(new Topics("18.2. Пособия по НС на производстве №393", "t261"));
         topicsList.add(new Topics("18.3. Положение об уплате страховых взносов №1297", "t262"));
         chapterList.add(new Chapter("18. Страховая деятельность", topicsList));
 
         //chapter 19 t270~
         topicsList = new ArrayList<>();
-        topicsList.add(new Topics("19.1. 2025!Гражданский кодекс ст.1-309 N 218-З", "t270"));
-        topicsList.add(new Topics("19.1.1 2025!Гражданский кодекс ст.310-655 N 218-З", "t272"));
-        topicsList.add(new Topics("19.1.2 2025!Гражданский кодекс ст.656-1153 N 218-З", "t273"));
+        topicsList.add(new Topics("19.1. Гражданский кодекс ст.1-309 N 218-З", "t270"));
+        topicsList.add(new Topics("19.1.1 Гражданский кодекс ст.310-655 N 218-З", "t272"));
+        topicsList.add(new Topics("19.1.2 Гражданский кодекс ст.656-1153 N 218-З", "t273"));
         topicsList.add(new Topics("19.2. Указ О защите прав граждан работающих по ГПД №314", "t271"));
         chapterList.add(new Chapter("19. Договор подряда (ГПД)", topicsList));
 
@@ -521,6 +520,7 @@ public class MainActivity extends AppCompatActivity {
         topicsList.add(new Topics("23.27. При производстве огенвых работ", "t446"));
         topicsList.add(new Topics("23.28. При содержании территории, зданий и сооружений в зимний период", "t447"));
         chapterList.add(new Chapter("23. Типичные нарушения требований ОТ", topicsList));
+
     }
 
     void sendData() {
