@@ -1,5 +1,34 @@
 apply plugin: 'com.android.application'
 
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+def releaseKeystoreFile = null
+def releaseStorePassword = null
+def releaseKeyAlias = null
+def releaseKeyPassword = null
+if (keystorePropertiesFile.exists()) {
+    keystorePropertiesFile.withInputStream { stream ->
+        keystoreProperties.load(stream)
+    }
+    def storeFilePath = keystoreProperties.getProperty("storeFile")
+    if (storeFilePath) {
+        def candidate = rootProject.file(storeFilePath)
+        if (candidate.exists()) {
+            releaseKeystoreFile = candidate
+        } else {
+            logger.lifecycle("Release keystore file not found at ${candidate}.")
+        }
+    }
+    releaseStorePassword = keystoreProperties.getProperty("storePassword")
+    releaseKeyAlias = keystoreProperties.getProperty("keyAlias")
+    releaseKeyPassword = keystoreProperties.getProperty("keyPassword")
+}
+def hasReleaseSigning = releaseKeystoreFile != null &&
+        releaseStorePassword && releaseKeyAlias && releaseKeyPassword
+if (keystorePropertiesFile.exists() && !hasReleaseSigning) {
+    logger.lifecycle("Release signing is not fully configured; release builds will use debug signing.")
+}
+
 android {
     compileSdk 34
 
@@ -22,6 +51,7 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig hasReleaseSigning ? signingConfigs.release : signingConfigs.debug
         }
     }
 
@@ -39,6 +69,17 @@ android {
     }
 
     namespace 'by.instruction.papera'
+
+    signingConfigs {
+        release {
+            if (hasReleaseSigning) {
+                storeFile releaseKeystoreFile
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+            }
+        }
+    }
 }
 
 // Удаляем устаревшие dex-архивы перед сборкой, чтобы не накапливались дубликаты
