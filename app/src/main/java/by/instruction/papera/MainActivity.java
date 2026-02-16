@@ -195,15 +195,15 @@ public class MainActivity extends AppCompatActivity {
         //chapter 1 - добавлять по ходу сколько надо t01~10
         topicsList.add(new Topics("1. Конституция Республики Беларусь", "t001"));
         topicsList.add(new Topics("1.1. Закон об охране труда №356-З", "t01"));
-        topicsList.add(new Topics("1.2. Трудовой кодекс Республики Беларусь", "t02"));
-        topicsList.add(new Topics("1.3. Кодекс об административных правонарушениях", "t03"));
+        topicsList.add(new Topics("1.2. 2026!Трудовой кодекс Республики Беларусь", "t02"));
+        topicsList.add(new Topics("1.3. 2026!Кодекс об административных правонарушениях", "t03"));
         topicsList.add(new Topics("1.4. Уголовный кодекс Республики Беларусь ст.1-308", "t04"));
         topicsList.add(new Topics("1.4. Уголовный кодекс Республики Беларусь ст.309-466", "t411"));
         topicsList.add(new Topics("1.5. Декрет №7 О развитии предпринимательства", "t05"));
-        topicsList.add(new Topics("1.6. Закон о пожарной безопасности №2403-XII", "t06"));
-        topicsList.add(new Topics("1.7. Закон о радиационной безопасности №198-З", "t07"));
+        topicsList.add(new Topics("1.6. 2026!Закон о пожарной безопасности №2403-XII", "t06"));
+        topicsList.add(new Topics("1.7. 2026!Закон о радиационной безопасности №198-З", "t07"));
         topicsList.add(new Topics("1.8. Закон об атомной энергии №208-З", "t08"));
-        topicsList.add(new Topics("1.9. Указ №510 Контрольная (надзорная) деятельность", "t09"));
+        topicsList.add(new Topics("1.9. 2026!Указ №227 О повышении эффективности контрольной (надзорной) деятельности", "t09"));
         topicsList.add(new Topics("1.10. Закон о промышленной безопасности №354-З", "t10"));
         topicsList.add(new Topics("1.11. Закон о санитарно-эпидемиологическом благополучии населения №340-З", "t400"));
         topicsList.add(new Topics("1.12. Закон о профессиональных союзах №1605-XII", "t002"));
