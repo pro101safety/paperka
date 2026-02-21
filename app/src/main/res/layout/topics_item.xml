@@ -24,7 +24,7 @@
             android:paddingEnd="10dp"
             android:paddingTop="10dp"
             android:paddingBottom="10dp"
-            android:textColor="@color/black"
+            android:textColor="@color/main_list_text_color"
             android:textSize="14sp"
             android:textStyle="normal"
             android:text="Образец"

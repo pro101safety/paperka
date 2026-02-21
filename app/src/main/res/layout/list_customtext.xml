@@ -6,7 +6,7 @@
     android:layout_height="wrap_content"
     android:id="@+id/list_customeText"
     android:text="Name"
-    android:textColor="@color/black"
+    android:textColor="@color/main_list_text_color"
     android:textSize="20sp"
     android:gravity="center_vertical"
     android:padding="12dp"

@@ -25,7 +25,7 @@
 
         <TextView
             android:id="@+id/chapterTitle"
-            android:textColor="@color/black"
+            android:textColor="@color/main_list_text_color"
             android:textSize="16sp"
             android:textStyle="bold"
             android:text="Образец заголовка"

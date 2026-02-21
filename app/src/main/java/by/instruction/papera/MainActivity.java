@@ -519,6 +519,7 @@ public class MainActivity extends AppCompatActivity {
         topicsList.add(new Topics("23.26. При выполнении работ по термической обработке металлов", "t445"));
         topicsList.add(new Topics("23.27. При производстве огенвых работ", "t446"));
         topicsList.add(new Topics("23.28. При содержании территории, зданий и сооружений в зимний период", "t447"));
+        topicsList.add(new Topics("23.29. При обслуживании животных и птицы", "t448"));
         chapterList.add(new Chapter("23. Типичные нарушения требований ОТ", topicsList));
 
     }
