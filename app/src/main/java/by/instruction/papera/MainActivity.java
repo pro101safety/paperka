@@ -218,7 +218,7 @@ public class MainActivity extends AppCompatActivity {
         topicsList.add(new Topics("2.5. ПОТ при работе на высоте №52", "t15"));
         topicsList.add(new Topics("2.5.1. С 26.04.2026!ПОТ при работе на высоте №11", "t27"));
         topicsList.add(new Topics("2.6. МПОТ мобильные подъемные рабочие платформы №78", "t16"));
-        topicsList.add(new Topics("2.7. МПОТ напольный безрельс и грузовые тележки №165", "t17"));
+        topicsList.add(new Topics("2.7. МПОТ напольный безрельсовый и грузовые тележки №165", "t17"));
         topicsList.add(new Topics("2.8. ПОТ в сельском и рыбном хозяйствах №29/44", "t18"));
         topicsList.add(new Topics("2.9. ПОТ при выполнении строительный работ №24/33", "t19"));
         topicsList.add(new Topics("2.10. ПОТ лесное хозяйство, обработка древесины №32/5", "t20"));
@@ -437,9 +437,9 @@ public class MainActivity extends AppCompatActivity {
         topicsList.add(new Topics("20.33. Правила промбеза... расплавы чёрных и цветных металлов... №19", "t313"));
         topicsList.add(new Topics("20.34. Правила промбеза при бурении скважин №34", "t314"));
         topicsList.add(new Topics("20.35. Правила промбеза аттракционов №67", "t315"));
-        topicsList.add(new Topics("20.36. Правила промбеза лифтов, подъёмников, эсклаторов... №56", "t316"));
-        topicsList.add(new Topics("20.37. Правила промбеза амиачных холодильных установок №46", "t317"));
-        topicsList.add(new Topics("20.38. Инструкция по дейсвтвиям в аварийных ситуациях (амиак) №23", "t318"));
+        topicsList.add(new Topics("20.36. Правила промбеза лифтов, подъёмников, эскалаторов... №56", "t316"));
+        topicsList.add(new Topics("20.37. Правила промбеза аммиачных холодильных установок №46", "t317"));
+        topicsList.add(new Topics("20.38. Инструкция по действиям в аварийных ситуациях (аммиак) №23", "t318"));
         topicsList.add(new Topics("20.39. Инструкция о срока и сборе инфы о возникновении аварии №33", "t319"));
         topicsList.add(new Topics("20.40. Правила промбеза котельные не более 0,07 не выше 115 С №5", "t320"));
         topicsList.add(new Topics("20.41. Правила промбеза эксплуатация технологических трубопроводов №21", "t321"));
@@ -466,7 +466,7 @@ public class MainActivity extends AppCompatActivity {
         topicsList.add(new Topics("21.6. Спецсанэпид требования к содер. и экспл. организаций здравоохранения... №130", "t355"));
         topicsList.add(new Topics("21.7. Спецсанэпид требования к содер. и экспл. объектов АПК... №42", "t356"));
         topicsList.add(new Topics("21.8. Спецсанэпид требования к установлению санитарно-защитных зон объектов... №847", "t357"));
-        topicsList.add(new Topics("21.9. Спецсанэпид требования к содер. и экспл. объектов неионизирующего излучения №360", "t358"));
+        topicsList.add(new Topics("21.9. Спецсанэпид требования к содер. и экспл. объектов не ионизирующего излучения №360", "t358"));
         topicsList.add(new Topics("21.10. Спецсанэпид требования к объектам пром.по переработке сельхозпродукции... №146", "t359"));
         topicsList.add(new Topics("21.11. Спецсанэпид требования к содер. и экспл. источников и систем водоснабжения №914", "t360"));
         topicsList.add(new Topics("21.12. Гигиенический норматив Микроклимат на рабочих местах №37", "t361"));
@@ -480,7 +480,7 @@ public class MainActivity extends AppCompatActivity {
         topicsList.add(new Topics("21.16. Санэпид требования общественного питания №12", "t365"));
         topicsList.add(new Topics("21.17. Положение о КГОУТ", "t366"));
         topicsList.add(new Topics("21.18. Положение о проведения государственной санитарно-гигиенической экспертизы №119", "t367"));
-        topicsList.add(new Topics("21.19. Саннормы к условиям труда, содержанию и эксплуатации производственных объектов №114", "t368"));
+        topicsList.add(new Topics("21.19. СанНормы к условиям труда, содержанию и эксплуатации производственных объектов №114", "t368"));
         chapterList.add(new Chapter("21. Санитария и гигиена", topicsList));
 
         //chapter 22 t401~
@@ -491,7 +491,7 @@ public class MainActivity extends AppCompatActivity {
 
         //chapter 23 t420~
         topicsList = new ArrayList<>();
-        topicsList.add(new Topics("23.1. При эксплуатации машин неприрывного действия", "t420"));
+        topicsList.add(new Topics("23.1. При эксплуатации машин непрерывного действия", "t420"));
         topicsList.add(new Topics("23.2. При выполнении окрасочных (малярных) работ", "t421"));
         topicsList.add(new Topics("23.3. При эксплуатации кузнечо-прессового оборудования", "t422"));
         topicsList.add(new Topics("23.4. При эксплуатации сельскохозяйственных машин", "t423"));
@@ -514,10 +514,10 @@ public class MainActivity extends AppCompatActivity {
         topicsList.add(new Topics("23.21. При эксплуатации МПРП", "t440"));
         topicsList.add(new Topics("23.22. При эксплуатации сверлильных и заточных станков", "t441"));
         topicsList.add(new Topics("23.23. При производстве работ с лестниц и стремянок", "t442"));
-        topicsList.add(new Topics("23.24. При выполнении работ по дроблению, измельчению и обогощению полезных ископаемых", "t443"));
+        topicsList.add(new Topics("23.24. При выполнении работ по дроблению, измельчению и обогащению полезных ископаемых", "t443"));
         topicsList.add(new Topics("23.25. При производстве электрогазосварочных работ", "t444"));
         topicsList.add(new Topics("23.26. При выполнении работ по термической обработке металлов", "t445"));
-        topicsList.add(new Topics("23.27. При производстве огенвых работ", "t446"));
+        topicsList.add(new Topics("23.27. При производстве огневых работ", "t446"));
         topicsList.add(new Topics("23.28. При содержании территории, зданий и сооружений в зимний период", "t447"));
         topicsList.add(new Topics("23.29. При обслуживании животных и птицы", "t448"));
         chapterList.add(new Chapter("23. Типичные нарушения требований ОТ", topicsList));
