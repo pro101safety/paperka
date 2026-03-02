@@ -277,11 +277,13 @@ public class MainActivity extends AppCompatActivity {
 
         //chapter 7 t125~129
         topicsList = new ArrayList<>();
-        topicsList.add(new Topics("7.1. Правила расследования НС №30", "t125"));
+        topicsList.add(new Topics("7.1. 2026!Правила расследования НС №30", "t125"));
         topicsList.add(new Topics("7.2. Формы документов для расследования НС №81/144", "t126"));
+        topicsList.add(new Topics("7.2.1. Изменения в №81/144", "t123"));
         topicsList.add(new Topics("7.3. Правила определения тяжести производственных травм №9", "t127"));
         topicsList.add(new Topics("7.4. Соглашение о расследовании НС ЕАЭС №80", "t128"));
         topicsList.add(new Topics("7.5. О вынесении требования по спецрасследованию НС №5", "t129"));
+        topicsList.add(new Topics("7.6. Инструкция о надзоре за правильным расследованием НС №128", "t124"));
         chapterList.add(new Chapter("7. Расследование несчастных случаев", topicsList));
 
         //chapter 8 t130~139
