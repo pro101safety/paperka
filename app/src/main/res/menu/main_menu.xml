@@ -20,4 +20,8 @@
         android:id="@+id/iot_game"
         android:title="Мини-игра"/>
 
+    <item
+        android:id="@+id/ai_chat"
+        android:title="ИИ-чат по ОТ"/>
+
 </menu>

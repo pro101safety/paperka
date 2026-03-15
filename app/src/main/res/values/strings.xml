@@ -22,4 +22,21 @@
     <string name="delete_folder_confirm_title">Удалить папку?</string>
     <string name="delete_folder_confirm_message">Все заметки и фото в этой папке будут удалены без возможности восстановления.</string>
     <string name="delete_folder_button">Удалить</string>
+    <string name="ai_chat_title">ИИ-чат по охране труда</string>
+    <string name="ai_chat_hint">Задайте вопрос по охране труда…</string>
+    <string name="ai_chat_send">Отправить</string>
+    <string name="ai_chat_loading">Ищу ответ в локальных документах…</string>
+    <string name="ai_chat_no_query">Введите вопрос</string>
+    <string name="ai_chat_no_context">Не нашел релевантных фрагментов в локальных документах. Уточните вопрос.</string>
+    <string name="ai_chat_no_key">API ключ DeepSeek не задан. Показан оффлайн-ответ по локальным документам.</string>
+    <string name="ai_chat_offline_mode">Нет сети. Показан оффлайн-ответ по локальным документам.</string>
+    <string name="ai_chat_limit_notice">Ответ сгенерирован с ограничением контекста для контроля трафика и стоимости.</string>
+    <string name="ai_chat_sources_prefix">Источники:</string>
+    <string name="ai_chat_privacy_notice">Если вы используете ИИ-чат, в сеть отправляются только ваш вопрос и выбранные релевантные фрагменты локальных документов. Полные документы не отправляются.</string>
+    <string name="ai_chat_mode_unknown">Режим: подготовка…</string>
+    <string name="ai_chat_mode_online">Режим: Online (DeepSeek)</string>
+    <string name="ai_chat_mode_offline">Режим: Offline (local docs)</string>
+    <string name="ai_chat_mode_searching">Режим: определение…</string>
+    <string name="ai_chat_mode_indexing">Режим: индексация документов…</string>
+    <string name="ai_chat_sources_more">Показать больше результатов</string>
 </resources>

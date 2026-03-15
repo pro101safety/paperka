@@ -1,5 +1,7 @@
 apply plugin: 'com.android.application'
 
+def deepseekApiKey = project.findProperty("deepseekApiKey") ?: ""
+
 android {
     compileSdk 34
 
@@ -7,8 +9,8 @@ android {
         applicationId "by.instruction.papera"
         minSdk 26
         targetSdk 35
-        versionCode 71
-        versionName "5.1.8"
+        versionCode 72
+        versionName "6.0.0"
 
 // Поддержка страниц памяти 16 КБ
         ndk {
@@ -21,7 +23,11 @@ android {
     buildTypes {
         release {
             minifyEnabled false
+            buildConfigField "String", "DEEPSEEK_API_KEY", "\"${deepseekApiKey}\""
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            buildConfigField "String", "DEEPSEEK_API_KEY", "\"${deepseekApiKey}\""
         }
     }
 

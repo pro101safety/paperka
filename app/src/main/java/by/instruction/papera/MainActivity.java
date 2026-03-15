@@ -125,6 +125,7 @@ public class MainActivity extends AppCompatActivity {
 
         // Не меняем флаги статус-бара вручную — оставляем управление теме
         addData();
+        DocumentSectionRegistry.refreshFromChapters(chapterList);
         sendData();
 
         // Проверяем поддержку архитектуры
@@ -599,6 +600,9 @@ public class MainActivity extends AppCompatActivity {
             return true;
         } else if (id == R.id.iot_game) {
             startActivity(new Intent(MainActivity.this, by.instruction.papera.game.IotGameActivity.class));
+            return true;
+        } else if (id == R.id.ai_chat) {
+            startActivity(new Intent(MainActivity.this, AiChatActivity.class));
             return true;
         } else if (id == R.id.search) {
             // Показываем диалог поиска
