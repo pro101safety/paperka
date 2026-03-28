@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/bookmarks"
+        android:icon="@drawable/ic_baseline_bookmark_24"
+        android:title="Закладки НПА"/>
+
+    <item
+        android:id="@+id/notes"
+        android:icon="@drawable/ic_drawer_notes_24"
+        android:title="Блокнот ИОТа"/>
+
+    <item
+        android:id="@+id/ai_chat"
+        android:icon="@drawable/ic_drawer_chat_24"
+        android:title="ИИ-чат по ОТ"/>
+
+    <item
+        android:id="@+id/luxometer"
+        android:icon="@drawable/ic_drawer_luxometer_24"
+        android:title="Люксометр"/>
+
+    <item
+        android:id="@+id/noise_meter"
+        android:icon="@drawable/ic_drawer_noise_meter_24"
+        android:title="Шумомер"/>
+
+    <item
+        android:id="@+id/iot_game"
+        android:icon="@drawable/ic_drawer_game_24"
+        android:title="Мини-игра"/>
+</menu>

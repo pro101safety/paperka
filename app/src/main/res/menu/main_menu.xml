@@ -7,21 +7,4 @@
     <item
         android:id="@+id/contact"
         android:title="Контакты"/>
-
-    <item
-        android:id="@+id/bookmarks"
-        android:title="Закладки НПА"/>
-
-    <item
-        android:id="@+id/notes"
-        android:title="Блокнот ИОТа"/>
-
-    <item
-        android:id="@+id/iot_game"
-        android:title="Мини-игра"/>
-
-    <item
-        android:id="@+id/ai_chat"
-        android:title="ИИ-чат по ОТ"/>
-
 </menu>

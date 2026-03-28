@@ -20,16 +20,23 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class AiChatActivity extends AppCompatActivity {
+    private static final String SMALLTALK_ASSET = "ai_smalltalk_rules.json";
     private final List<AiChatMessage> messages = new ArrayList<>();
     private final ExecutorService backgroundExecutor = Executors.newSingleThreadExecutor();
+    private final List<SmallTalkRule> smallTalkRules = new ArrayList<>();
     private AiChatAdapter adapter;
     private RecyclerView recyclerView;
     private EditText inputMessage;
@@ -51,6 +58,7 @@ public class AiChatActivity extends AppCompatActivity {
         toolbar.setNavigationOnClickListener(v -> finish());
 
         retriever = new LocalDocumentRetriever(this);
+        loadSmallTalkRules();
         recyclerView = findViewById(R.id.chatRecyclerView);
         inputMessage = findViewById(R.id.inputMessage);
         textChatMode = findViewById(R.id.textChatMode);
@@ -105,6 +113,15 @@ public class AiChatActivity extends AppCompatActivity {
 
         backgroundExecutor.execute(() -> {
             try {
+                String freeChatAnswer = tryBuildFreeChatAnswer(safeQuery);
+                if (freeChatAnswer != null) {
+                    runOnUiThread(() -> {
+                        updateModeIndicator(getString(R.string.ai_chat_mode_offline), 0xFF8A5B00);
+                        replaceLoadingMessage(loadingIndex, freeChatAnswer, new ArrayList<>());
+                    });
+                    return;
+                }
+
                 List<LocalDocumentRetriever.DocumentChunk> chunks = retriever.retrieveTopChunks(safeQuery, 5);
                 if (chunks.isEmpty()) {
                     runOnUiThread(() -> replaceLoadingMessage(loadingIndex, getString(R.string.ai_chat_no_context), new ArrayList<>()));
@@ -124,6 +141,138 @@ public class AiChatActivity extends AppCompatActivity {
                 });
             }
         });
+    }
+
+    private String tryBuildFreeChatAnswer(String query) {
+        String normalized = normalizeUserQuery(query);
+        if (normalized.isEmpty()) {
+            return null;
+        }
+
+        for (SmallTalkRule rule : smallTalkRules) {
+            if (rule == null || rule.response == null || rule.response.trim().isEmpty()) {
+                continue;
+            }
+            if (containsAny(normalized, rule.patterns.toArray(new String[0]))) {
+                return rule.response;
+            }
+        }
+        return null;
+    }
+
+    private boolean containsAny(String text, String... phrases) {
+        for (String phrase : phrases) {
+            if (text.contains(phrase)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String normalizeUserQuery(String query) {
+        if (query == null) {
+            return "";
+        }
+        return query.toLowerCase()
+                .replace('ё', 'е')
+                .replaceAll("\\s+", " ")
+                .trim();
+    }
+
+    private void loadSmallTalkRules() {
+        smallTalkRules.clear();
+        smallTalkRules.addAll(defaultSmallTalkRules());
+        try {
+            String json = readAssetText(SMALLTALK_ASSET);
+            if (json == null || json.trim().isEmpty()) {
+                return;
+            }
+            JSONObject root = new JSONObject(json);
+            JSONArray rules = root.optJSONArray("rules");
+            if (rules == null || rules.length() == 0) {
+                return;
+            }
+            List<SmallTalkRule> parsed = new ArrayList<>();
+            for (int i = 0; i < rules.length(); i++) {
+                JSONObject item = rules.optJSONObject(i);
+                if (item == null) {
+                    continue;
+                }
+                String response = item.optString("response", "").trim();
+                JSONArray patternsJson = item.optJSONArray("patterns");
+                if (response.isEmpty() || patternsJson == null || patternsJson.length() == 0) {
+                    continue;
+                }
+                List<String> patterns = new ArrayList<>();
+                for (int j = 0; j < patternsJson.length(); j++) {
+                    String p = normalizeUserQuery(patternsJson.optString(j, ""));
+                    if (!p.isEmpty()) {
+                        patterns.add(p);
+                    }
+                }
+                if (!patterns.isEmpty()) {
+                    parsed.add(new SmallTalkRule(patterns, response));
+                }
+            }
+            if (!parsed.isEmpty()) {
+                smallTalkRules.clear();
+                smallTalkRules.addAll(parsed);
+            }
+        } catch (Exception ignored) {
+            // fallback already loaded
+        }
+    }
+
+    private String readAssetText(String fileName) throws IOException {
+        try (InputStream is = getAssets().open(fileName);
+             BufferedReader reader = new BufferedReader(new InputStreamReader(is, java.nio.charset.StandardCharsets.UTF_8))) {
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line).append('\n');
+            }
+            return sb.toString();
+        }
+    }
+
+    private List<SmallTalkRule> defaultSmallTalkRules() {
+        List<SmallTalkRule> rules = new ArrayList<>();
+        rules.add(new SmallTalkRule(
+                asList("привет", "здравствуй", "добрый день", "добрый вечер", "салам"),
+                "Привет! Я оффлайн-помощник ПАПЕРКА. Могу отвечать на простые вопросы и помогать искать информацию по охране труда в локальных документах."
+        ));
+        rules.add(new SmallTalkRule(
+                asList("как тебя зовут", "твое имя", "кто ты", "ты кто"),
+                "Я ИИ-помощник в приложении ПАПЕРКА по охране труда."
+        ));
+        rules.add(new SmallTalkRule(
+                asList("кто создал", "кто разработал", "кто сделал приложение", "автор приложения"),
+                "Приложение ПАПЕРКА создано разработчиком проекта ПАПЕРКА по охране труда. Контакты доступны в разделе \"Контакты\"."
+        ));
+        rules.add(new SmallTalkRule(
+                asList("что ты умеешь", "чем поможешь", "как ты работаешь"),
+                "Я работаю оффлайн: ищу релевантные разделы в локальных документах приложения, показываю цитаты и источники с переходом в документ."
+        ));
+        rules.add(new SmallTalkRule(
+                asList("спасибо", "благодарю", "благодарность"),
+                "Пожалуйста! Если хотите, могу уточнить ответ по конкретной теме охраны труда."
+        ));
+        rules.add(new SmallTalkRule(
+                asList("который час", "сколько времени", "дата сегодня"),
+                "Я не обращаюсь к интернету и системным часам устройства в чате, но могу помочь с вопросами по охране труда."
+        ));
+        return rules;
+    }
+
+    private List<String> asList(String... values) {
+        List<String> out = new ArrayList<>();
+        for (String value : values) {
+            String normalized = normalizeUserQuery(value);
+            if (!normalized.isEmpty()) {
+                out.add(normalized);
+            }
+        }
+        return out;
     }
 
     private void updateModeIndicator(String text, int color) {
@@ -223,6 +372,16 @@ public class AiChatActivity extends AppCompatActivity {
             return docx;
         } catch (IOException ignored) {
             return null;
+        }
+    }
+
+    private static class SmallTalkRule {
+        final List<String> patterns;
+        final String response;
+
+        SmallTalkRule(List<String> patterns, String response) {
+            this.patterns = patterns;
+            this.response = response;
         }
     }
 

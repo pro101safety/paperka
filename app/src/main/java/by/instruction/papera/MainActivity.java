@@ -20,7 +20,10 @@ import androidx.core.view.WindowInsetsControllerCompat;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.view.GravityCompat;
+import androidx.drawerlayout.widget.DrawerLayout;
 import com.google.android.material.appbar.MaterialToolbar;
+import com.google.android.material.navigation.NavigationView;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -73,6 +76,8 @@ public class MainActivity extends AppCompatActivity {
     ListView listView;
     ArrayAdapter<SearchResultItem> arrayAdapter;
     List<SearchResultItem> searchResults;
+    private DrawerLayout drawerLayout;
+    private NavigationView navigationView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -91,6 +96,22 @@ public class MainActivity extends AppCompatActivity {
                 getSupportActionBar().setTitle(getString(R.string.app_name));
                 getSupportActionBar().setDisplayShowTitleEnabled(true);
             }
+        }
+        if (toolbar != null) {
+            toolbar.setNavigationIcon(R.drawable.ic_baseline_menu_24);
+            toolbar.setNavigationOnClickListener(v -> toggleDrawer());
+        }
+
+        drawerLayout = findViewById(R.id.drawer_layout);
+        navigationView = findViewById(R.id.navigation_view);
+        if (navigationView != null) {
+            navigationView.setNavigationItemSelectedListener(item -> {
+                boolean handled = handleMenuItem(item.getItemId());
+                if (handled) {
+                    closeDrawer();
+                }
+                return handled;
+            });
         }
 
         // Инициализируем список для поиска
@@ -584,29 +605,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-        int id = item.getItemId();
-
-        if (id == R.id.privacy) {
-            startActivity(new Intent(MainActivity.this, Privacy.class));
-            return true;
-        } else if (id == R.id.contact) {
-            startActivity(new Intent(MainActivity.this, Contact.class));
-            return true;
-        } else if (id == R.id.bookmarks) {
-            startActivity(new Intent(MainActivity.this, BookmarksActivity.class));
-            return true;
-        } else if (id == R.id.notes) {
-            startActivity(new Intent(MainActivity.this, NotesActivity.class));
-            return true;
-        } else if (id == R.id.iot_game) {
-            startActivity(new Intent(MainActivity.this, by.instruction.papera.game.IotGameActivity.class));
-            return true;
-        } else if (id == R.id.ai_chat) {
-            startActivity(new Intent(MainActivity.this, AiChatActivity.class));
-            return true;
-        } else if (id == R.id.search) {
-            // Показываем диалог поиска
-            showSearchDialog();
+        if (handleMenuItem(item.getItemId())) {
             return true;
         }
 
@@ -616,6 +615,11 @@ public class MainActivity extends AppCompatActivity {
     //начало кода системной кнопки назад
     @Override
     public void onBackPressed() {
+        if (drawerLayout != null && drawerLayout.isDrawerOpen(GravityCompat.START)) {
+            drawerLayout.closeDrawer(GravityCompat.START);
+            return;
+        }
+
         // Если показываются результаты поиска, возвращаемся к главному экрану
         if (listView != null && listView.getVisibility() == View.VISIBLE) {
             // Очищаем результаты поиска
@@ -718,5 +722,55 @@ public class MainActivity extends AppCompatActivity {
         intent.putExtra("fileName", actualFileName);
         intent.putExtra("docTitle", docTitle);
         startActivity(intent);
+    }
+
+    private boolean handleMenuItem(int id) {
+        if (id == R.id.privacy) {
+            startActivity(new Intent(MainActivity.this, Privacy.class));
+            return true;
+        } else if (id == R.id.contact) {
+            startActivity(new Intent(MainActivity.this, Contact.class));
+            return true;
+        } else if (id == R.id.bookmarks) {
+            startActivity(new Intent(MainActivity.this, BookmarksActivity.class));
+            return true;
+        } else if (id == R.id.notes) {
+            startActivity(new Intent(MainActivity.this, NotesActivity.class));
+            return true;
+        } else if (id == R.id.iot_game) {
+            startActivity(new Intent(MainActivity.this, by.instruction.papera.game.IotGameActivity.class));
+            return true;
+        } else if (id == R.id.ai_chat) {
+            startActivity(new Intent(MainActivity.this, AiChatActivity.class));
+            return true;
+        } else if (id == R.id.luxometer) {
+            startActivity(new Intent(MainActivity.this, LuxometerActivity.class));
+            return true;
+        } else if (id == R.id.noise_meter) {
+            startActivity(new Intent(MainActivity.this, NoiseMeterActivity.class));
+            return true;
+        } else if (id == R.id.search) {
+            // Показываем диалог поиска
+            showSearchDialog();
+            return true;
+        }
+        return false;
+    }
+
+    private void closeDrawer() {
+        if (drawerLayout != null) {
+            drawerLayout.closeDrawer(GravityCompat.START, true);
+        }
+    }
+
+    private void toggleDrawer() {
+        if (drawerLayout == null) {
+            return;
+        }
+        if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
+            drawerLayout.closeDrawer(GravityCompat.START);
+        } else {
+            drawerLayout.openDrawer(GravityCompat.START);
+        }
     }
 }

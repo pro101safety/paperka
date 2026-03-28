@@ -7,5 +7,12 @@
     <color name="divider_gray">#1F000000</color>
     <color name="aloe">#a0da86</color>
     <color name="logo_green">#009688</color>
+    <color name="drawer_surface">#FFFCFAF5</color>
+    <color name="drawer_header_surface">#FFFFF3D1</color>
+    <color name="drawer_text_primary">#FF1F1F1F</color>
+    <color name="drawer_text_secondary">#FF6B6B6B</color>
+    <color name="drawer_divider">#14000000</color>
+    <color name="drawer_outline">#12000000</color>
+    <color name="drawer_item_pressed">#22FFC107</color>
 
 </resources>
