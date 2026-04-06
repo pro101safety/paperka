@@ -1,6 +1,9 @@
 package by.instruction.papera;
 
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.Menu;
@@ -19,7 +22,10 @@ import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 
 import androidx.annotation.NonNull;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import com.google.android.material.appbar.MaterialToolbar;
@@ -78,6 +84,7 @@ public class MainActivity extends AppCompatActivity {
     List<SearchResultItem> searchResults;
     private DrawerLayout drawerLayout;
     private NavigationView navigationView;
+    private ActivityResultLauncher<String> callPermissionLauncher;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -104,6 +111,14 @@ public class MainActivity extends AppCompatActivity {
 
         drawerLayout = findViewById(R.id.drawer_layout);
         navigationView = findViewById(R.id.navigation_view);
+        callPermissionLauncher = registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
+            if (Boolean.TRUE.equals(isGranted)) {
+                placeCallDirectly();
+            } else {
+                Toast.makeText(this, R.string.emergency_call_permission_rationale, Toast.LENGTH_SHORT).show();
+                openDialerFallback();
+            }
+        });
         if (navigationView != null) {
             navigationView.setNavigationItemSelectedListener(item -> {
                 boolean handled = handleMenuItem(item.getItemId());
@@ -112,6 +127,17 @@ public class MainActivity extends AppCompatActivity {
                 }
                 return handled;
             });
+
+            MenuItem emergencyItem = navigationView.getMenu().findItem(R.id.emergency_112);
+            if (emergencyItem != null && emergencyItem.getActionView() != null) {
+                View emergencyButton = emergencyItem.getActionView().findViewById(R.id.btnEmergencyMenu112);
+                if (emergencyButton != null) {
+                    emergencyButton.setOnClickListener(v -> {
+                        closeDrawer();
+                        startEmergencyCall();
+                    });
+                }
+            }
         }
 
         // Инициализируем список для поиска
@@ -749,6 +775,21 @@ public class MainActivity extends AppCompatActivity {
         } else if (id == R.id.noise_meter) {
             startActivity(new Intent(MainActivity.this, NoiseMeterActivity.class));
             return true;
+        } else if (id == R.id.thermometer) {
+            startActivity(new Intent(MainActivity.this, ThermometerActivity.class));
+            return true;
+        } else if (id == R.id.compass) {
+            startActivity(new Intent(MainActivity.this, CompassActivity.class));
+            return true;
+        } else if (id == R.id.level) {
+            startActivity(new Intent(MainActivity.this, LevelActivity.class));
+            return true;
+        } else if (id == R.id.vibrometer) {
+            startActivity(new Intent(MainActivity.this, VibrometerActivity.class));
+            return true;
+        } else if (id == R.id.emergency_112) {
+            startEmergencyCall();
+            return true;
         } else if (id == R.id.search) {
             // Показываем диалог поиска
             showSearchDialog();
@@ -771,6 +812,36 @@ public class MainActivity extends AppCompatActivity {
             drawerLayout.closeDrawer(GravityCompat.START);
         } else {
             drawerLayout.openDrawer(GravityCompat.START);
+        }
+    }
+
+    private void startEmergencyCall() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED) {
+            placeCallDirectly();
+        } else {
+            callPermissionLauncher.launch(Manifest.permission.CALL_PHONE);
+        }
+    }
+
+    private void placeCallDirectly() {
+        Intent intent = new Intent(Intent.ACTION_CALL, Uri.parse("tel:112"));
+        if (intent.resolveActivity(getPackageManager()) != null) {
+            try {
+                startActivity(intent);
+            } catch (SecurityException e) {
+                openDialerFallback();
+            }
+        } else {
+            openDialerFallback();
+        }
+    }
+
+    private void openDialerFallback() {
+        Intent dialIntent = new Intent(Intent.ACTION_DIAL, Uri.parse("tel:112"));
+        if (dialIntent.resolveActivity(getPackageManager()) != null) {
+            startActivity(dialIntent);
+        } else {
+            Toast.makeText(this, R.string.emergency_call_failed, Toast.LENGTH_SHORT).show();
         }
     }
 }

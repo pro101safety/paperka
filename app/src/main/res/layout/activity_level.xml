@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/black"
+    android:orientation="vertical">
+
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@android:color/black"
+        android:fitsSystemWindows="true"
+        app:navigationIconTint="@color/purple_200"
+        app:title="@string/level_title"
+        app:titleTextAppearance="@style/CustomToolbarTitle"
+        app:titleTextColor="@color/purple_200" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <TextView
+            android:id="@+id/textLevelValue"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="monospace"
+            android:text="0.0°"
+            android:textColor="@color/purple_200"
+            android:textSize="64sp"
+            android:textStyle="bold" />
+
+        <by.instruction.papera.LevelBubbleView
+            android:id="@+id/viewLevelBubble"
+            android:layout_width="220dp"
+            android:layout_height="220dp"
+            android:layout_marginTop="12dp" />
+
+        <TextView
+            android:id="@+id/textLevelAxis"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:textColor="@color/purple_200"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/textLevelStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:gravity="center"
+            android:text="@string/level_waiting"
+            android:textColor="@color/purple_200"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/textLevelHint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:gravity="center"
+            android:text="@string/level_hint"
+            android:textColor="@color/purple_200"
+            android:textSize="15sp" />
+
+        <TextView
+            android:id="@+id/textLevelDisclaimer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:gravity="center"
+            android:text="@string/level_disclaimer"
+            android:textColor="@color/purple_200"
+            android:textSize="14sp" />
+    </LinearLayout>
+</LinearLayout>

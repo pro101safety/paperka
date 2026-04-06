@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:foregroundGravity="center"
+    android:paddingTop="10dp"
+    android:paddingBottom="10dp">
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnEmergencyMenu112"
+        android:layout_width="220dp"
+        android:layout_height="92dp"
+        android:layout_gravity="center"
+        android:text="@string/emergency_button_label"
+        android:textAllCaps="false"
+        android:textColor="@color/logo_green"
+        android:textSize="28sp"
+        android:textStyle="bold"
+        app:backgroundTint="@android:color/white"
+        app:cornerRadius="46dp"
+        app:rippleColor="#22009688"
+        app:strokeColor="@color/logo_green"
+        app:strokeWidth="2dp" />
+</FrameLayout>

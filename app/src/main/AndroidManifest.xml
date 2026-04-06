@@ -5,6 +5,7 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.CALL_PHONE" />
 
     <application
         android:allowBackup="true"
@@ -40,7 +41,22 @@
             android:name=".NoiseMeterActivity"
             android:exported="false"
             android:theme="@style/Theme.Papera" />
-
+        <activity
+            android:name=".ThermometerActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Papera" />
+        <activity
+            android:name=".CompassActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Papera" />
+        <activity
+            android:name=".LevelActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Papera" />
+        <activity
+            android:name=".VibrometerActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Papera" />
         <activity
             android:name=".FullView"
             android:exported="false" />

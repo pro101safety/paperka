@@ -14,5 +14,8 @@
     <color name="drawer_divider">#14000000</color>
     <color name="drawer_outline">#12000000</color>
     <color name="drawer_item_pressed">#22FFC107</color>
+    <color name="vibration_low">#4CAF50</color>
+    <color name="vibration_medium">#FFC107</color>
+    <color name="vibration_high">#F44336</color>
 
 </resources>

@@ -129,7 +129,7 @@ public class AiChatActivity extends AppCompatActivity {
                 }
 
                 List<AiSource> sources = retriever.toSources(chunks, 3, safeQuery);
-                String offlineText = buildOfflineAnswer(safeQuery, chunks);
+                final String offlineText = buildOfflineAnswer(safeQuery, chunks);
                 runOnUiThread(() -> {
                     updateModeIndicator(getString(R.string.ai_chat_mode_offline), 0xFF8A5B00);
                     replaceLoadingMessage(loadingIndex, offlineText, sources);
