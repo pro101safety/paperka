@@ -495,16 +495,16 @@ public class FullView extends AppCompatActivity {
                 
                 // Обработка выделения
                 if (trimmed.contains("<span class='highlight'>")) {
-                // Сначала защищаем теги выделения от экранирования
+                    // Сначала защищаем теги выделения от экранирования
                     String protectedParagraph = trimmed
                         .replace("<span class='highlight'>", "___HIGHLIGHT_START___")
                         .replace("</span>", "___HIGHLIGHT_END___");
                 
-                // Экранируем HTML символы
+                    // Экранируем HTML символы
                     String escapedParagraph = escapeHtml(protectedParagraph);
                 
-                // Восстанавливаем теги выделения
-                escapedParagraph = escapedParagraph
+                    // Восстанавливаем теги выделения
+                    escapedParagraph = escapedParagraph
                         .replace("___HIGHLIGHT_START___", "<span class='highlight'>")
                         .replace("___HIGHLIGHT_END___", "</span>");
                 

@@ -95,6 +95,11 @@ public class NoiseMeterActivity extends AppCompatActivity {
         if (isRecording) {
             return;
         }
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            textNoiseValue.setText("--");
+            textNoiseStatus.setText(R.string.noise_meter_permission_required);
+            return;
+        }
 
         int minBufferSize = AudioRecord.getMinBufferSize(
                 SAMPLE_RATE,
