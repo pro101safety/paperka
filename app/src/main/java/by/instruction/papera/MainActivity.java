@@ -244,7 +244,7 @@ public class MainActivity extends AppCompatActivity {
         topicsList.add(new Topics("1. Конституция Республики Беларусь", "t001"));
         topicsList.add(new Topics("1.1. Закон об охране труда №356-З", "t01"));
         topicsList.add(new Topics("1.2. 2026!Трудовой кодекс Республики Беларусь", "t02"));
-        topicsList.add(new Topics("1.3. 2026!Кодекс об административных правонарушениях", "t03"));
+        topicsList.add(new Topics("1.3. 2026!!Кодекс об административных правонарушениях", "t03"));
         topicsList.add(new Topics("1.4. Уголовный кодекс Республики Беларусь ст.1-308", "t04"));
         topicsList.add(new Topics("1.4. Уголовный кодекс Республики Беларусь ст.309-466", "t411"));
         topicsList.add(new Topics("1.5. Декрет №7 О развитии предпринимательства", "t05"));
@@ -263,8 +263,7 @@ public class MainActivity extends AppCompatActivity {
         topicsList.add(new Topics("2.2. МПОТ погрузочно-разгрузочные №12", "t12"));
         topicsList.add(new Topics("2.3. МПОТ при холодной обработке металлов №24/11", "t13"));
         topicsList.add(new Topics("2.4. ПОТ авто и горэлектро транспорт №78/104", "t14"));
-        topicsList.add(new Topics("2.5. ПОТ при работе на высоте №52", "t15"));
-        topicsList.add(new Topics("2.5.1. С 26.04.2026!ПОТ при работе на высоте №11", "t27"));
+        topicsList.add(new Topics("2.5. 2026!ПОТ при выполнении работ на высоте №11", "t27"));
         topicsList.add(new Topics("2.6. МПОТ мобильные подъемные рабочие платформы №78", "t16"));
         topicsList.add(new Topics("2.7. МПОТ напольный безрельсовый и грузовые тележки №165", "t17"));
         topicsList.add(new Topics("2.8. ПОТ в сельском и рыбном хозяйствах №29/44", "t18"));
@@ -272,7 +271,6 @@ public class MainActivity extends AppCompatActivity {
         topicsList.add(new Topics("2.10. ПОТ лесное хозяйство, обработка древесины №32/5", "t20"));
         topicsList.add(new Topics("2.13. ПОТ при производстве пищевой продукции №122", "t23"));
         topicsList.add(new Topics("2.14. ПОТ при проведении полиграфических работ №84/11", "t24"));
-        topicsList.add(new Topics("2.15. МПОТ промышленный альпинизм №184", "t25"));
         topicsList.add(new Topics("2.16. ПОТ при производстве резиновых и пластмассовых изделий №20", "t26"));
         topicsList.add(new Topics("2.18. МПОТ при эксплуатации строительных подъемников №12/2", "t28"));
         topicsList.add(new Topics("2.19. МПОТ при термической обработке металлов №99/9", "t29"));
@@ -281,10 +279,9 @@ public class MainActivity extends AppCompatActivity {
         topicsList.add(new Topics("2.23. ПОТ при оказании психиатрической помощи №86/89", "t33"));
         topicsList.add(new Topics("2.25. МПОТ при работе с химвеществами, проявляющими опасные свойства №90/9", "t35"));
         topicsList.add(new Topics("2.33. ПОТ при выполнении работ на объектах радиосвязи №7/3", "t43"));
-        topicsList.add(new Topics("2.42. ПОТ для зоопарков №33", "t52"));
         topicsList.add(new Topics("2.43. ПОТ при выполнении работ в цирках №14/7", "t53"));
         topicsList.add(new Topics("2.44. ПОТ для театров и концертных залов №4", "t54"));
-        topicsList.add(new Topics("2.45. ПОТ при производстве фильмов №31", "t55"));
+        topicsList.add(new Topics("2.45. 2026!ПОТ при производстве фильмов №17/29", "t55"));
         topicsList.add(new Topics("2.46. ПТБиОТ выправительные работы на внутренних водных путях №15", "t56"));
         topicsList.add(new Topics("2.50. ОПОТ строительство и ремонт автодорог №14", "t60"));
         topicsList.add(new Topics("2.51. ОПОТ в зелёном хозяйстве РБ №9", "t61"));
@@ -314,13 +311,14 @@ public class MainActivity extends AppCompatActivity {
 
         //chapter 6 t116~124
         topicsList = new ArrayList<>();
-        topicsList.add(new Topics("6.1. Обязательные и внеочередные медосмотры №74", "t116"));
+        topicsList.add(new Topics("6.1. 2026! Обязательные и внеочередные медосмотры №74", "t116"));
         topicsList.add(new Topics("6.2. Предсменный медосмотр или освидетельствование №116/119", "t117"));
         topicsList.add(new Topics("6.3. Предрейсовые медосмотры водителей (лицензия) №84", "t118"));
         topicsList.add(new Topics("6.4. Контроль водителей на алкоголь (без лицензии) №25/28", "t119"));
         topicsList.add(new Topics("6.5. Предрейсовые медосмотры трактористов №87", "t120"));
         topicsList.add(new Topics("6.6. Аптечки (перечни вложений) №178", "t121"));
         topicsList.add(new Topics("6.7. Медсправка (форма) №87", "t122"));
+        topicsList.add(new Topics("6.8. Медосмотры работников ЖД транспорта №171", "t115"));
         chapterList.add(new Chapter("6. Медосмотры", topicsList));
 
         //chapter 7 t125~129
