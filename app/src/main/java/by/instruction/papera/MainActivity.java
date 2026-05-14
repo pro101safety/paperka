@@ -267,7 +267,7 @@ public class MainActivity extends AppCompatActivity {
         topicsList.add(new Topics("2.6. МПОТ мобильные подъемные рабочие платформы №78", "t16"));
         topicsList.add(new Topics("2.7. МПОТ напольный безрельсовый и грузовые тележки №165", "t17"));
         topicsList.add(new Topics("2.8. ПОТ в сельском и рыбном хозяйствах №29/44", "t18"));
-        topicsList.add(new Topics("2.9. ПОТ при выполнении строительный работ №24/33", "t19"));
+        topicsList.add(new Topics("2.9. 2026!ПОТ при выполнении строительный работ №24/33", "t19"));
         topicsList.add(new Topics("2.10. ПОТ лесное хозяйство, обработка древесины №32/5", "t20"));
         topicsList.add(new Topics("2.13. ПОТ при производстве пищевой продукции №122", "t23"));
         topicsList.add(new Topics("2.14. ПОТ при проведении полиграфических работ №84/11", "t24"));
@@ -372,7 +372,7 @@ public class MainActivity extends AppCompatActivity {
         topicsList.add(new Topics("11.3. О нормах подъёма женщинами №133", "t172"));
         topicsList.add(new Topics("11.4. Запрещённые работы для женщин №35", "t173"));
         topicsList.add(new Topics("11.5. О нормах подъема детьми №134", "t174"));
-        topicsList.add(new Topics("11.6. Запрет на труд до 18 лет №12", "t175"));
+        topicsList.add(new Topics("11.6. 2026! Запрет на труд до 18 лет №12", "t175"));
         topicsList.add(new Topics("11.7. Лёгкие работы от 14 до 16 лет №144", "t176"));
         topicsList.add(new Topics("11.8. Сроки хранения ЛПА по ОТ", "t177"));
         chapterList.add(new Chapter("11. Организация охраны труда", topicsList));
@@ -445,7 +445,7 @@ public class MainActivity extends AppCompatActivity {
         topicsList.add(new Topics("19.1. Гражданский кодекс ст.1-309 N 218-З", "t270"));
         topicsList.add(new Topics("19.1.1 Гражданский кодекс ст.310-655 N 218-З", "t272"));
         topicsList.add(new Topics("19.1.2 Гражданский кодекс ст.656-1153 N 218-З", "t273"));
-        topicsList.add(new Topics("19.2. Указ О защите прав граждан работающих по ГПД №314", "t271"));
+        topicsList.add(new Topics("19.2. 2026!Указ О защите прав граждан работающих по ГПД №314", "t271"));
         chapterList.add(new Chapter("19. Договор подряда (ГПД)", topicsList));
 
         //chapter 20 t280~
