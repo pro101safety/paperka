@@ -14,14 +14,13 @@ import android.widget.ExpandableListView;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
-import android.util.Log;
 
 import android.content.res.Configuration;
-import android.util.TypedValue;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 
 import androidx.annotation.NonNull;
+import androidx.activity.OnBackPressedCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
@@ -84,6 +83,7 @@ public class MainActivity extends AppCompatActivity {
     List<SearchResultItem> searchResults;
     private DrawerLayout drawerLayout;
     private NavigationView navigationView;
+    private MaterialToolbar toolbar;
     private ActivityResultLauncher<String> callPermissionLauncher;
 
     @Override
@@ -95,7 +95,7 @@ public class MainActivity extends AppCompatActivity {
         WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
 
         // Toolbar для стабильного отображения меню/поиска в светлой теме
-        MaterialToolbar toolbar = findViewById(R.id.toolbar);
+        toolbar = findViewById(R.id.toolbar);
         if (toolbar != null && getSupportActionBar() == null) {
             setSupportActionBar(toolbar);
             // Устанавливаем кастомный заголовок с уменьшенным шрифтом
@@ -107,6 +107,7 @@ public class MainActivity extends AppCompatActivity {
         if (toolbar != null) {
             toolbar.setNavigationIcon(R.drawable.ic_baseline_menu_24);
             toolbar.setNavigationOnClickListener(v -> toggleDrawer());
+            toolbar.setOnMenuItemClickListener(this::onOptionsItemSelected);
         }
 
         drawerLayout = findViewById(R.id.drawer_layout);
@@ -175,61 +176,19 @@ public class MainActivity extends AppCompatActivity {
         DocumentSectionRegistry.refreshFromChapters(chapterList);
         sendData();
 
-        // Проверяем поддержку архитектуры
-        checkArchitectureSupport();
+        setupBackPressedHandler();
     }
 
-    private void checkArchitectureSupport() {
-        String arch = System.getProperty("os.arch");
-        String abi = Build.SUPPORTED_ABIS[0];
-
-        Log.d("Architecture", "Current architecture: " + arch);
-        Log.d("Architecture", "Primary ABI: " + abi);
-
-        // Проверяем поддержку 16 КБ страниц (Android 14+)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            Log.d("Architecture", "16 KB page size support: Available but disabled for compatibility");
-        } else {
-            Log.d("Architecture", "16 KB page size support: Not available (requires Android 14+)");
-        }
-
-        Log.d("Architecture", "Native libraries compatibility mode: Enabled");
+    @Override
+    protected void onDestroy() {
+        dismissToolbarMenus();
+        super.onDestroy();
     }
 
-    private void addActionBarPadding() {
-        // Получаем высоту ActionBar
-        int actionBarHeight = 0;
-        if (getSupportActionBar() != null) {
-            actionBarHeight = getSupportActionBar().getHeight();
-        }
-
-        // Если ActionBar еще не измерен, получаем его высоту из темы
-        if (actionBarHeight == 0) {
-            TypedValue tv = new TypedValue();
-            if (getTheme().resolveAttribute(android.R.attr.actionBarSize, tv, true)) {
-                actionBarHeight = TypedValue.complexToDimensionPixelSize(tv.data, getResources().getDisplayMetrics());
-            }
-        }
-
-        // Добавляем отступ сверху для ExpandableListView
-        if (expandableListView != null && actionBarHeight > 0) {
-            int topPadding = actionBarHeight + getResources().getDimensionPixelSize(android.R.dimen.app_icon_size) / 4;
-            expandableListView.setPadding(
-                    expandableListView.getPaddingLeft(),
-                    topPadding,
-                    expandableListView.getPaddingRight(),
-                    expandableListView.getPaddingBottom()
-            );
-
-            // Также добавляем отступ для ListView (результаты поиска)
-            if (listView != null) {
-                listView.setPadding(
-                        listView.getPaddingLeft(),
-                        topPadding,
-                        listView.getPaddingRight(),
-                        listView.getPaddingBottom()
-                );
-            }
+    private void dismissToolbarMenus() {
+        closeOptionsMenu();
+        if (toolbar != null) {
+            toolbar.dismissPopupMenus();
         }
     }
 
@@ -269,6 +228,7 @@ public class MainActivity extends AppCompatActivity {
         topicsList.add(new Topics("2.8. ПОТ в сельском и рыбном хозяйствах №29/44", "t18"));
         topicsList.add(new Topics("2.9. 2026!ПОТ при выполнении строительный работ №24/33", "t19"));
         topicsList.add(new Topics("2.10. ПОТ лесное хозяйство, обработка древесины №32/5", "t20"));
+        topicsList.add(new Topics("2.11. ПОТ в зоопарках №32/44", "t21"));
         topicsList.add(new Topics("2.13. ПОТ при производстве пищевой продукции №122", "t23"));
         topicsList.add(new Topics("2.14. ПОТ при проведении полиграфических работ №84/11", "t24"));
         topicsList.add(new Topics("2.16. ПОТ при производстве резиновых и пластмассовых изделий №20", "t26"));
@@ -293,7 +253,7 @@ public class MainActivity extends AppCompatActivity {
         topicsList = new ArrayList<>();
         topicsList.add(new Topics("3.1. Инструкция обучения, инструктажа и ПЗ по ОТ №175", "t90"));
         topicsList.add(new Topics("3.2. Положения о комиссиях для ПЗ по ОТ №210", "t91"));
-        topicsList.add(new Topics("3.3. Перечень профессий для подготовки рабочих №7/14", "t92"));
+        topicsList.add(new Topics("3.3. 2026!Перечень профессий для подготовки рабочих №7/14", "t92"));
         topicsList.add(new Topics("3.4. Стажировка водителей транспортных средств №46", "t93"));
         topicsList.add(new Topics("3.5. Перечень профессий рабочих - разряды после переподготовки №84/63", "t94"));
         chapterList.add(new Chapter("3. Обучение, инструктажи и ПЗ по ОТ", topicsList));
@@ -382,8 +342,10 @@ public class MainActivity extends AppCompatActivity {
         topicsList.add(new Topics("12.1. Порядок аттестации по условиям труда №253", "t180"));
         topicsList.add(new Topics("12.2. Инструкция по оценке условий труда №35", "t181"));
         topicsList.add(new Topics("12.3. Оценка тяжести и напряжённости труда №027-2012", "t182"));
-        topicsList.add(new Topics("12.5. Списки №1 и №2. Пост. №536", "t184"));
+        topicsList.add(new Topics("12.4. Списки №1 и №2. Пост. №536", "t184"));
         topicsList.add(new Topics("12.5. Как применять Списки №1 и №2. Пост. №86", "t185"));
+        topicsList.add(new Topics("12.6. 2026!Инструкция о порядке применения списков производств Пост. №40", "t186"));
+        topicsList.add(new Topics("12.7. 2026!Инструкция о порядке оценки качества аттестации. Пост. №41", "t187"));
         chapterList.add(new Chapter("12. Аттестация рабочих мест", topicsList));
 
         //chapter 13 t190~
@@ -392,6 +354,7 @@ public class MainActivity extends AppCompatActivity {
         topicsList.add(new Topics("13.2. О внештатных пожарных формированиях №296", "t191"));
         topicsList.add(new Topics("13.3. Спецтребования по ПБ прибывание детей №561", "t192"));
         topicsList.add(new Topics("13.4. Спецтребования ПБ взрыво-пожароопасных производств №779", "t193"));
+        topicsList.add(new Topics("13.5. 2027! Указ №212", "t480"));
         chapterList.add(new Chapter("13. Пожарная безопасность", topicsList));
 
         //chapter 14 t210~
@@ -417,7 +380,7 @@ public class MainActivity extends AppCompatActivity {
         topicsList = new ArrayList<>();
         topicsList.add(new Topics("17.1. УКАЗ о лицензировании атомной энергии №137", "t240"));
         topicsList.add(new Topics("17.2. О реализации Закона о радиационной безопасности №497", "t241"));
-        topicsList.add(new Topics("17.3. Критерии оценки радиационного воздействия №829 (вступает в силу с 08.03.2023)", "t242"));
+        topicsList.add(new Topics("17.3. Критерии оценки радиационного воздействия №829", "t242"));
         topicsList.add(new Topics("17.4. Радиационно-гигиенический паспорт №443", "t243"));
         topicsList.add(new Topics("17.5. Реестр аттестованных консультантов радиационной безопасности №19", "t244"));
         topicsList.add(new Topics("17.6. Безопасность при обращении с источниками ионизирующего излучения №79", "t245"));
@@ -431,6 +394,7 @@ public class MainActivity extends AppCompatActivity {
         topicsList.add(new Topics("17.14. СНиП Обеспечение радиационной безопасности персонала и населения №137", "t253"));
         topicsList.add(new Topics("17.15. СНиП Обращение с лучевыми досмотровыми установками №134", "t254"));
         topicsList.add(new Topics("17.16. СНиП Линейные ускорители электронов до 100 МэВ №165", "t255"));
+        topicsList.add(new Topics("17.17. Правила устройства и эксплуатации систем вентиляции, важных для безопасности атомных электростанций №10", "t256"));
         chapterList.add(new Chapter("17. Радиационная безопасность", topicsList));
 
         //chapter 18 t260~
@@ -450,7 +414,7 @@ public class MainActivity extends AppCompatActivity {
 
         //chapter 20 t280~
         topicsList = new ArrayList<>();
-        topicsList.add(new Topics("20.1. О порядке осуществления мероприятий технического характера N33", "t280"));
+        topicsList.add(new Topics("20.1. 2026! О порядке проведения мероприятий технического характера N54", "t280"));
         topicsList.add(new Topics("20.2. О разработке и функционировании систем контроля №78", "t281"));
         topicsList.add(new Topics("20.3. О порядке проведения идентификации опасных производственных объектов №613", "t282"));
         topicsList.add(new Topics("20.4. О порядке аттестации экспертов №614", "t283"));
@@ -488,7 +452,7 @@ public class MainActivity extends AppCompatActivity {
         topicsList.add(new Topics("20.36. Правила промбеза лифтов, подъёмников, эскалаторов... №56", "t316"));
         topicsList.add(new Topics("20.37. Правила промбеза аммиачных холодильных установок №46", "t317"));
         topicsList.add(new Topics("20.38. Инструкция по действиям в аварийных ситуациях (аммиак) №23", "t318"));
-        topicsList.add(new Topics("20.39. Инструкция о срока и сборе инфы о возникновении аварии №33", "t319"));
+        topicsList.add(new Topics("20.39. Инструкция о порядке, сроках направления и сборе инфы о возникновении аварии или инцидента №43", "t319"));
         topicsList.add(new Topics("20.40. Правила промбеза котельные не более 0,07 не выше 115 С №5", "t320"));
         topicsList.add(new Topics("20.41. Правила промбеза эксплуатация технологических трубопроводов №21", "t321"));
         topicsList.add(new Topics("20.42. Охранная зона объектов газораспределительной системы №1474", "t322"));
@@ -570,6 +534,31 @@ public class MainActivity extends AppCompatActivity {
         topicsList.add(new Topics("23.29. При обслуживании животных и птицы", "t448"));
         chapterList.add(new Chapter("23. Типичные нарушения требований ОТ", topicsList));
 
+        //chapter 24 t450~
+        topicsList = new ArrayList<>();
+        topicsList.add(new Topics("24.1. ТИОТ антенщик-мачтовик", "t450"));
+        topicsList.add(new Topics("24.2. ТИОТ водитель авто", "t451"));
+        topicsList.add(new Topics("24.3. ТИОТ горничная; кастелянша", "t452"));
+        topicsList.add(new Topics("24.4. ТИОТ деревообрабатывающие станки", "t453"));
+        topicsList.add(new Topics("24.5. ТИОТ емкостные сооружения", "t454"));
+        topicsList.add(new Topics("24.6. ТИОТ животновод; полевод; слесарь по ремонту сельхозтехники; тракторист", "t455"));
+        topicsList.add(new Topics("24.7. ТИОТ рабочий по комплексному обслуживанию и ремонту зданий и сооружений", "t456"));
+        topicsList.add(new Topics("24.8. ТИОТ земляные работы", "t457"));
+        topicsList.add(new Topics("24.9. ТИОТ косьба травы", "t458"));
+        topicsList.add(new Topics("24.10. ТИОТ лаборант химанализа", "t459"));
+        topicsList.add(new Topics("24.11. ТИОТ оказание медпомощи в УЗ", "t460"));
+        topicsList.add(new Topics("24.12. ТИОТ управление МПРП; работы из МПРП", "t461"));
+        topicsList.add(new Topics("24.13. ТИОТ офисное оборудование", "t462"));
+        topicsList.add(new Topics("24.14. ТИОТ ручные пневомашины", "t463"));
+        topicsList.add(new Topics("24.15. ТИОТ погрузочно-разгрузочные и складские работы", "t464"));
+        topicsList.add(new Topics("24.16. ТИОТ связь 16 штук", "t465"));
+        topicsList.add(new Topics("24.17. ТИОТ слесарно-монтажный инструмент", "t466"));
+        topicsList.add(new Topics("24.18. ТИОТ стропальщик", "t467"));
+        topicsList.add(new Topics("24.19. ТИОТ снятие, установка, крепление тентов авто", "t468"));
+        topicsList.add(new Topics("24.20. ТИОТ ручной электромеханический инструмент", "t469"));
+        topicsList.add(new Topics("24.21. ТИОТ электромонтер по ремонту и обслуживанию электрооборудования", "t470"));
+        chapterList.add(new Chapter("24. Типовые инструкции по ОТ", topicsList));
+
     }
 
     void sendData() {
@@ -610,7 +599,7 @@ public class MainActivity extends AppCompatActivity {
         
         // Если ничего не найдено, показываем toast
         if (searchResults.isEmpty()) {
-            android.widget.Toast.makeText(this, "Ничего не найдено", android.widget.Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.search_nothing_found, Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -637,42 +626,48 @@ public class MainActivity extends AppCompatActivity {
     }
 
     //начало кода системной кнопки назад
-    @Override
-    public void onBackPressed() {
-        if (drawerLayout != null && drawerLayout.isDrawerOpen(GravityCompat.START)) {
-            drawerLayout.closeDrawer(GravityCompat.START);
-            return;
-        }
+    private void setupBackPressedHandler() {
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                if (drawerLayout != null && drawerLayout.isDrawerOpen(GravityCompat.START)) {
+                    drawerLayout.closeDrawer(GravityCompat.START);
+                    return;
+                }
 
-        // Если показываются результаты поиска, возвращаемся к главному экрану
-        if (listView != null && listView.getVisibility() == View.VISIBLE) {
-            // Очищаем результаты поиска
-            searchResults.clear();
-            arrayAdapter.notifyDataSetChanged();
-            
-            // Показываем главный экран
-            expandableListView.setVisibility(View.VISIBLE);
-            listView.setVisibility(View.GONE);
-            
-            // Обновляем заголовок
-            getSupportActionBar().setTitle(getString(R.string.app_name));
-            
-            return;
-        }
+                // Если показываются результаты поиска, возвращаемся к главному экрану
+                if (listView != null && listView.getVisibility() == View.VISIBLE) {
+                    searchResults.clear();
+                    arrayAdapter.notifyDataSetChanged();
 
-        if (backPressedTime + 2000 > System.currentTimeMillis()){
-            if (backToast != null) backToast.cancel();
-            super.onBackPressed();
-            return;
-        }else{
-            backToast = Toast.makeText(getBaseContext(), "Теперь можно бахнуть кофейку:)", Toast.LENGTH_SHORT);
-            backToast.show();
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            finishAndRemoveTask();
-            finishAffinity();
-        }
-        backPressedTime = System.currentTimeMillis();
+                    expandableListView.setVisibility(View.VISIBLE);
+                    listView.setVisibility(View.GONE);
+
+                    if (getSupportActionBar() != null) {
+                        getSupportActionBar().setTitle(getString(R.string.app_name));
+                    }
+
+                    return;
+                }
+
+                if (backPressedTime + 2000 > System.currentTimeMillis()) {
+                    if (backToast != null) {
+                        backToast.cancel();
+                    }
+                    setEnabled(false);
+                    getOnBackPressedDispatcher().onBackPressed();
+                    return;
+                }
+
+                backToast = Toast.makeText(getBaseContext(), R.string.exit_toast_coffee, Toast.LENGTH_SHORT);
+                backToast.show();
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    finishAndRemoveTask();
+                    finishAffinity();
+                }
+                backPressedTime = System.currentTimeMillis();
+            }
+        });
     }
     //конец кода системной кнопки назад
     
@@ -737,7 +732,7 @@ public class MainActivity extends AppCompatActivity {
                 test.close();
                 actualFileName = fileName + ".docx";
             } catch (IOException e2) {
-                Toast.makeText(this, "Файл не найден: " + fileName + ".doc/.docx", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, getString(R.string.file_not_found, fileName), Toast.LENGTH_SHORT).show();
                 return;
             }
         }

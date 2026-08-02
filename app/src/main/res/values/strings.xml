@@ -28,13 +28,9 @@
     <string name="ai_chat_loading">Ищу ответ в локальных документах…</string>
     <string name="ai_chat_no_query">Введите вопрос</string>
     <string name="ai_chat_no_context">Не нашел релевантных фрагментов в локальных документах. Уточните вопрос.</string>
-    <string name="ai_chat_no_key">API ключ DeepSeek не задан. Показан оффлайн-ответ по локальным документам.</string>
-    <string name="ai_chat_offline_mode">Нет сети. Показан оффлайн-ответ по локальным документам.</string>
-    <string name="ai_chat_limit_notice">Ответ сгенерирован с ограничением контекста для контроля трафика и стоимости.</string>
     <string name="ai_chat_sources_prefix">Источники:</string>
     <string name="ai_chat_privacy_notice">Если вы используете ИИ-чат, в сеть отправляются только ваш вопрос и выбранные релевантные фрагменты локальных документов. Полные документы не отправляются.</string>
     <string name="ai_chat_mode_unknown">Режим: подготовка…</string>
-    <string name="ai_chat_mode_online">Режим: Online (DeepSeek)</string>
     <string name="ai_chat_mode_offline">Режим: Offline (local docs)</string>
     <string name="ai_chat_mode_searching">Режим: определение…</string>
     <string name="ai_chat_mode_indexing">Режим: индексация документов…</string>
@@ -86,4 +82,11 @@
     <string name="emergency_call_permission_rationale">Разрешите звонки, чтобы вызвать 112 напрямую.</string>
     <string name="drawer_header_title">Быстрые разделы</string>
     <string name="drawer_header_subtitle">Инструменты и полезные функции под рукой</string>
+    <string name="search_nothing_found">Ничего не найдено</string>
+    <string name="file_not_found">Файл не найден: %1$s.doc/.docx</string>
+    <string name="exit_toast_coffee">Теперь можно бахнуть кофейку:)</string>
+    <string name="fullview_no_filename">Ошибка: имя файла не передано</string>
+    <string name="fullview_bookmark_saved">Закладка сохранена</string>
+    <string name="fullview_bookmark_jump_page">Переход к закладке на странице %1$d</string>
+    <string name="fullview_single_page_only">Документ содержит только одну страницу</string>
 </resources>

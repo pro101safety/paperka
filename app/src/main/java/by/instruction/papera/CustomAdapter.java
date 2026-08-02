@@ -8,6 +8,7 @@ import android.view.ViewGroup;
 import android.widget.BaseExpandableListAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.cardview.widget.CardView;
 import java.io.InputStream;
@@ -110,7 +111,7 @@ public class CustomAdapter extends BaseExpandableListAdapter {
                     test.close();
                     fileName = fileCode + ".docx";
                 } catch (IOException e2) {
-                    android.widget.Toast.makeText(context, "Файл не найден: " + fileCode + ".doc/.docx", android.widget.Toast.LENGTH_SHORT).show();
+                    Toast.makeText(context, context.getString(R.string.file_not_found, fileCode), Toast.LENGTH_SHORT).show();
                     return;
                 }
             }

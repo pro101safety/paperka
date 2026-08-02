@@ -1,6 +1,5 @@
 package by.instruction.papera;
 
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Base64;
 import android.view.KeyEvent;
@@ -35,11 +34,18 @@ import org.apache.poi.xwpf.usermodel.XWPFPictureData;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Locale;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+import org.xmlpull.v1.XmlPullParser;
+import org.xmlpull.v1.XmlPullParserException;
 
 // Класс для хранения информации о найденном результате поиска
 class DocSearchResult {
@@ -84,8 +90,6 @@ public class FullView extends AppCompatActivity {
     private ImageButton btnSearchPrev;
     private ImageButton btnSearchNext;
 
-    private DocSearchTask currentTask;
-    
     // Индикатор страниц
     private TextView pageIndicator;
     private int totalPages = 1;
@@ -107,9 +111,28 @@ public class FullView extends AppCompatActivity {
     
     // Прогресс загрузки
     private ProgressBar loadingProgress;
+
+    private MaterialToolbar toolbar;
     
-    // Кэш для оптимизации
-    private static final Map<String, String> documentCache = new HashMap<>();
+    // Кэш для оптимизации (LRU, не более 5 документов)
+    private static final int DOCUMENT_CACHE_MAX_ENTRIES = 5;
+    private static final Map<String, String> documentCache = Collections.synchronizedMap(
+            new LinkedHashMap<String, String>(DOCUMENT_CACHE_MAX_ENTRIES + 1, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<String, String> eldest) {
+                    return size() > DOCUMENT_CACHE_MAX_ENTRIES;
+                }
+            }
+    );
+
+    /** DOCX >= 256 KB — только XmlPullParser (POI раздувает heap и блокирует GC). */
+    private static final long LIGHTWEIGHT_DOCX_THRESHOLD_BYTES = 256L * 1024L;
+    /** Картинки больше порога пишем во временный файл, а не inline base64. */
+    private static final int MAX_INLINE_IMAGE_BYTES = 32 * 1024;
+    private static final int TEXT_CAP = 500_000;
+
+    private ExecutorService docLoadExecutor;
+    private volatile boolean loadCancelled;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -141,7 +164,7 @@ public class FullView extends AppCompatActivity {
         androidx.core.view.WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
 
         // Подключаем Toolbar как ActionBar, чтобы отрисовать меню (лупу/закладку)
-        MaterialToolbar toolbar = findViewById(R.id.toolbar);
+        toolbar = findViewById(R.id.toolbar);
         if (toolbar != null && getSupportActionBar() == null) {
             setSupportActionBar(toolbar);
             // Устанавливаем кастомный заголовок с уменьшенным шрифтом
@@ -149,6 +172,7 @@ public class FullView extends AppCompatActivity {
                 getSupportActionBar().setTitle(getString(R.string.app_name));
                 getSupportActionBar().setDisplayShowTitleEnabled(true);
             }
+            toolbar.setOnMenuItemClickListener(this::onOptionsItemSelected);
         }
 
         fileName = getIntent().getStringExtra("fileName");
@@ -158,7 +182,7 @@ public class FullView extends AppCompatActivity {
         android.util.Log.d("BookmarkJump", "Получены параметры - fileName: " + fileName + ", jumpToPage: " + jumpToPage);
         
         if (fileName == null) {
-            Toast.makeText(this, "Ошибка: имя файла не передано", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.fullview_no_filename, Toast.LENGTH_SHORT).show();
             finish();
             return;
         }
@@ -168,237 +192,328 @@ public class FullView extends AppCompatActivity {
     }
 
     private void loadDocFile() {
-        // Проверяем кэш
-        if (documentCache.containsKey(fileName)) {
-            documentContent = documentCache.get(fileName);
-            documentHtml = convertToHtmlOptimized(documentContent);
-            displayDocument();
+        showLoadingProgress();
+        loadCancelled = false;
+
+        if (docLoadExecutor == null || docLoadExecutor.isShutdown()) {
+            docLoadExecutor = Executors.newSingleThreadExecutor();
+        }
+
+        docLoadExecutor.execute(() -> {
+            DocLoadResult result;
+            try {
+                if (documentCache.containsKey(fileName)) {
+                    String cached = documentCache.get(fileName);
+                    result = new DocLoadResult();
+                    result.text = cached;
+                    result.html = convertToHtmlOptimized(cached);
+                } else {
+                    result = loadDocumentFromAssets();
+                }
+            } catch (Exception e) {
+                android.util.Log.e("DocRender", "Ошибка загрузки " + fileName, e);
+                result = new DocLoadResult();
+                result.text = "Ошибка загрузки файла: " + e.getMessage();
+                result.html = convertToHtmlOptimized(result.text);
+            }
+
+            final DocLoadResult loadedResult = result;
+            if (loadCancelled || isFinishing()) {
+                deleteTempHtmlFile(loadedResult.htmlFilePath);
+                return;
+            }
+
+            runOnUiThread(() -> applyDocLoadResult(loadedResult));
+        });
+    }
+
+    private static final class DocLoadResult {
+        String text = "";
+        String html;
+        String htmlFilePath;
+    }
+
+    private void applyDocLoadResult(DocLoadResult result) {
+        if (isFinishing()) {
+            deleteTempHtmlFile(result.htmlFilePath);
             return;
         }
-        
-        // Показываем прогресс загрузки
-        showLoadingProgress();
-        
-		new AsyncTask<Void, Void, String>() {
-                    @Override
-            protected String doInBackground(Void... voids) {
-                try {
-					InputStream is = getAssets().open(fileName);
-                    String text;
-                    
-                    if (fileName.endsWith(".docx")) {
-						// Копируем в временный .docx, чтобы оценить размер и при необходимости включить облегченный парсер
-						java.io.File tempDocx = java.io.File.createTempFile("doc_src_", ".docx", getCacheDir());
-						java.io.FileOutputStream fosCopy = new java.io.FileOutputStream(tempDocx);
-						byte[] bufCopy = new byte[1 << 16];
-						int rCopy;
-						long totalBytes = 0L;
-						while ((rCopy = is.read(bufCopy)) != -1) {
-							fosCopy.write(bufCopy, 0, rCopy);
-							totalBytes += rCopy;
-						}
-						fosCopy.flush();
-						fosCopy.close();
-						is.close();
 
-						final long HUGE_THRESHOLD_BYTES = 15L * 1024L * 1024L; // ~15MB
-						boolean useLightweight = totalBytes >= HUGE_THRESHOLD_BYTES;
+        documentContent = result.text != null ? result.text : "";
 
-						if (!useLightweight) {
-							// Богатый рендер в HTML (с таблицами) + потоковая запись
-							java.io.FileInputStream fis = new java.io.FileInputStream(tempDocx);
-							XWPFDocument document = new XWPFDocument(fis);
-						java.io.File temp = java.io.File.createTempFile("doc_render_", ".html", getCacheDir());
-						java.io.OutputStreamWriter writer = new java.io.OutputStreamWriter(new java.io.FileOutputStream(temp), java.nio.charset.StandardCharsets.UTF_8);
-						StringBuilder textContent = new StringBuilder();
-						final int TEXT_CAP = 500000; // ограничиваем объем текста для поиска, чтобы не расходовать память
-						
-						// HTML шапка и базовые стили
-						writer.write("<html><head><meta charset='UTF-8'>");
-						writer.write("<style>");
-						writer.write("body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; font-size: 34px; }");
-						writer.write("p { margin: 0 0 12px 0; }");
-						writer.write("table { border-collapse: collapse; width: 100%; margin: 12px 0; }");
-						writer.write("td, th { border: 1px solid #ccc; padding: 8px; vertical-align: top; }");
-						writer.write("th { background: #f5f5f5; font-weight: bold; }");
-                        writer.write(".doc-image { margin: 20px 0; text-align: center; }");
-                        writer.write(".doc-image img { max-width: 100%; height: auto; }");
-						writer.write("</style></head><body>");
+        if (result.htmlFilePath != null) {
+            tempHtmlFilePath = result.htmlFilePath;
+            documentHtml = null;
+        } else {
+            tempHtmlFilePath = null;
+            if (result.html != null && !result.html.isEmpty()) {
+                documentHtml = result.html;
+            } else if (documentContent != null && !documentContent.isEmpty()) {
+                documentHtml = convertToHtmlOptimized(documentContent);
+            }
+            if (documentContent != null
+                    && !documentContent.startsWith("Ошибка загрузки")
+                    && documentContent.length() < TEXT_CAP) {
+                documentCache.put(fileName, documentContent);
+            }
+        }
 
-						for (IBodyElement element : document.getBodyElements()) {
-							if (element.getElementType() == BodyElementType.PARAGRAPH) {
-								XWPFParagraph paragraph = (XWPFParagraph) element;
-								String paragraphText = paragraph.getText();
-								if (paragraphText != null && !paragraphText.trim().isEmpty() && textContent.length() < TEXT_CAP) {
-									int toAppend = Math.min(paragraphText.length(), TEXT_CAP - textContent.length());
-									textContent.append(paragraphText, 0, toAppend).append('\n');
-								}
-								writer.write("<p>");
-								for (XWPFRun run : paragraph.getRuns()) {
-                                    try {
-                                        appendRunToHtml(run, writer);
-                                    } catch (IOException e) {
-                                        android.util.Log.e("DocRender", "Ошибка записи параграфа", e);
-                                    }
-								}
-								writer.write("</p>");
-							} else if (element.getElementType() == BodyElementType.TABLE) {
-								XWPFTable table = (XWPFTable) element;
-								writer.write("<table>");
-								for (XWPFTableRow row : table.getRows()) {
-									writer.write("<tr>");
-									for (XWPFTableCell cell : row.getTableCells()) {
-										writer.write("<td>");
-										for (XWPFParagraph p : cell.getParagraphs()) {
-											String paraText = p.getText();
-											if (paraText != null && !paraText.trim().isEmpty() && textContent.length() < TEXT_CAP) {
-												int toAppend = Math.min(paraText.length(), TEXT_CAP - textContent.length());
-												textContent.append(paraText, 0, toAppend).append('\t');
-											}
-											writer.write("<p>");
-											for (XWPFRun run : p.getRuns()) {
-                                                try {
-                                                    appendRunToHtml(run, writer);
-                                                } catch (IOException e) {
-                                                    android.util.Log.e("DocRender", "Ошибка записи ячейки таблицы", e);
-                                                }
-											}
-											writer.write("</p>");
-										}
-										writer.write("</td>");
-									}
-									writer.write("</tr>");
-								}
-								writer.write("</table>");
-							}
-						}
+        displayDocument();
+        hideLoadingProgress();
+    }
 
-						writer.write("</body></html>");
-						writer.flush();
-						writer.close();
-						document.close();
-						fis.close();
-						// Сохраняем путь к temp-файлу, используем его в displayDocument
-						tempHtmlFilePath = temp.getAbsolutePath();
-						documentHtml = null; // не используем строковый HTML для больших документов
-						text = textContent.toString();
-						// Удаляем исходный временный .docx
-						try { tempDocx.delete(); } catch (Throwable ignored) {}
-						
-						} else {
-							// Облегченный парсер: извлекаем word/document.xml и строим простой HTML с абзацами
-							java.io.FileInputStream fisZip = new java.io.FileInputStream(tempDocx);
-							java.util.zip.ZipInputStream zis = new java.util.zip.ZipInputStream(fisZip);
-							java.util.zip.ZipEntry entry;
-							java.io.File tempHtml = java.io.File.createTempFile("doc_light_", ".html", getCacheDir());
-							java.io.OutputStreamWriter writer = new java.io.OutputStreamWriter(new java.io.FileOutputStream(tempHtml), java.nio.charset.StandardCharsets.UTF_8);
+    private DocLoadResult loadDocumentFromAssets() throws IOException, XmlPullParserException {
+        DocLoadResult result = new DocLoadResult();
+        InputStream is = getAssets().open(fileName);
 
-							StringBuilder textContent = new StringBuilder();
-							final int TEXT_CAP = 500000;
+        if (fileName.endsWith(".docx")) {
+            java.io.File tempDocx = java.io.File.createTempFile("doc_src_", ".docx", getCacheDir());
+            try (java.io.FileOutputStream fosCopy = new java.io.FileOutputStream(tempDocx)) {
+                byte[] bufCopy = new byte[1 << 16];
+                int rCopy;
+                long totalBytes = 0L;
+                while ((rCopy = is.read(bufCopy)) != -1) {
+                    fosCopy.write(bufCopy, 0, rCopy);
+                    totalBytes += rCopy;
+                }
+                is.close();
 
-							writer.write("<html><head><meta charset='UTF-8'><style>body{font-family:Arial,sans-serif;margin:20px;line-height:1.6;font-size:34px;}p{margin:0 0 12px 0;}.doc-image{margin:20px 0;text-align:center;}.doc-image img{max-width:100%;height:auto;}</style></head><body>");
+                if (totalBytes >= LIGHTWEIGHT_DOCX_THRESHOLD_BYTES) {
+                    DocLoadResult light = renderDocxLightweight(tempDocx);
+                    try { tempDocx.delete(); } catch (Throwable ignored) {}
+                    return light;
+                }
 
-							try {
-								while ((entry = zis.getNextEntry()) != null) {
-									if ("word/document.xml".equals(entry.getName())) {
-										java.io.BufferedReader br = new java.io.BufferedReader(new java.io.InputStreamReader(zis, java.nio.charset.StandardCharsets.UTF_8));
-										String line;
-										StringBuilder curText = new StringBuilder();
-										while ((line = br.readLine()) != null) {
-											int idx = 0;
-											while (idx < line.length()) {
-												int tStart = line.indexOf("<w:t", idx);
-												int pEnd = line.indexOf("</w:p>", idx);
-												if (pEnd >= 0 && (tStart < 0 || pEnd < tStart)) {
-													// Завершение параграфа
-													if (curText.length() > 0) {
-														String para = escapeHtml(curText.toString().trim());
-														if (!para.isEmpty()) {
-															writer.write("<p>");
-															writer.write(para);
-															writer.write("</p>");
-															if (textContent.length() < TEXT_CAP) {
-																int remain = TEXT_CAP - textContent.length();
-																String toAdd = curText.toString();
-																if (toAdd.length() > remain) toAdd = toAdd.substring(0, remain);
-																textContent.append(toAdd).append('\n');
-															}
-													}
-													curText.setLength(0);
-												}
-												idx = pEnd + 6;
-												continue;
-											}
-											if (tStart < 0) break;
-											int tClose = line.indexOf('>', tStart);
-											if (tClose < 0) break;
-											int tEnd = line.indexOf("</w:t>", tClose + 1);
-											if (tEnd < 0) {
-												idx = tClose + 1;
-												continue;
-											}
-											String txt = line.substring(tClose + 1, tEnd);
-											// Раскодируем XML сущности
-											txt = txt.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"").replace("&apos;", "'");
-											curText.append(txt);
-											idx = tEnd + 6;
-										}
-										}
-										br.close();
-										// После обработки документа выходим из цикла по Zip-входам
-										break;
-									}
-								}
-							} catch (Throwable ignored) {}
+                try (java.io.FileInputStream fis = new java.io.FileInputStream(tempDocx)) {
+                    DocLoadResult rich = renderDocxRich(fis);
+                    try { tempDocx.delete(); } catch (Throwable ignored) {}
+                    return rich;
+                }
+            }
+        }
 
-							writer.write("</body></html>");
-							writer.flush();
-							writer.close();
-							zis.close();
-							fisZip.close();
+        HWPFDocument document = new HWPFDocument(is);
+        Range range = document.getRange();
+        result.text = range.text();
+        result.html = convertToHtmlOptimized(result.text);
+        document.close();
+        is.close();
+        return result;
+    }
 
-							tempHtmlFilePath = tempHtml.getAbsolutePath();
-							documentHtml = null;
-							text = textContent.toString();
+    private DocLoadResult renderDocxRich(java.io.InputStream fis) throws IOException {
+        DocLoadResult result = new DocLoadResult();
+        XWPFDocument document = new XWPFDocument(fis);
+        java.io.File temp = java.io.File.createTempFile("doc_render_", ".html", getCacheDir());
+        java.io.OutputStreamWriter writer = new java.io.OutputStreamWriter(
+                new java.io.FileOutputStream(temp), StandardCharsets.UTF_8);
+        StringBuilder textContent = new StringBuilder();
 
-							try { tempDocx.delete(); } catch (Throwable ignored) {}
-						}
-                    } else {
-                        // Оптимизированная обработка DOC файлов
-                        HWPFDocument document = new HWPFDocument(is);
-                        Range range = document.getRange();
-                        text = range.text();
-                        // Для .doc генерируем HTML из текста без таблиц (ограничение формата/библиотеки в текущем решении)
-                        documentHtml = convertToHtmlOptimized(text);
-                        document.close();
+        writer.write("<html><head><meta charset='UTF-8'>");
+        writeDocHtmlStyles(writer);
+        writer.write("</head><body>");
+
+        try {
+            renderBodyElements(document.getBodyElements(), writer, textContent, '\n');
+        } finally {
+            document.close();
+        }
+
+        writer.write("</body></html>");
+        writer.flush();
+        writer.close();
+
+        result.text = textContent.toString();
+        result.htmlFilePath = temp.getAbsolutePath();
+        return result;
+    }
+
+    private void writeDocHtmlStyles(java.io.Writer writer) throws IOException {
+        writer.write("<style>");
+        writer.write("body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; font-size: 34px; }");
+        writer.write("p { margin: 0 0 12px 0; }");
+        writer.write(".doc-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 12px 0; }");
+        writer.write("table { border-collapse: collapse; width: 100%; min-width: max-content; }");
+        writer.write("td, th { border: 1px solid #ccc; padding: 8px; vertical-align: top; word-wrap: break-word; }");
+        writer.write("td p { margin: 0 0 4px 0; }");
+        writer.write("td p:last-child { margin-bottom: 0; }");
+        writer.write("th { background: #f5f5f5; font-weight: bold; }");
+        writer.write(".doc-image { margin: 20px 0; text-align: center; }");
+        writer.write(".doc-image img { max-width: 100%; height: auto; }");
+        writer.write("</style>");
+    }
+
+    private void renderBodyElements(List<IBodyElement> elements, java.io.Writer writer,
+                                    StringBuilder textContent, char textSeparator) throws IOException {
+        for (IBodyElement element : elements) {
+            if (element.getElementType() == BodyElementType.PARAGRAPH) {
+                appendParagraphToHtml((XWPFParagraph) element, writer, textContent, TEXT_CAP, textSeparator);
+            } else if (element.getElementType() == BodyElementType.TABLE) {
+                renderTableToHtml((XWPFTable) element, writer, textContent);
+            }
+        }
+    }
+
+    private void renderTableToHtml(XWPFTable table, java.io.Writer writer,
+                                   StringBuilder textContent) throws IOException {
+        writer.write("<div class='doc-table-wrap'><table>");
+        for (XWPFTableRow row : table.getRows()) {
+            writer.write("<tr>");
+            for (XWPFTableCell cell : row.getTableCells()) {
+                writer.write("<td>");
+                renderBodyElements(cell.getBodyElements(), writer, textContent, '\t');
+                writer.write("</td>");
+            }
+            writer.write("</tr>");
+            if (textContent.length() < TEXT_CAP) {
+                textContent.append('\n');
+            }
+        }
+        writer.write("</table></div>");
+    }
+
+    private DocLoadResult renderDocxLightweight(java.io.File tempDocx) throws IOException, XmlPullParserException {
+        DocLoadResult result = new DocLoadResult();
+        java.io.File tempHtml = java.io.File.createTempFile("doc_light_", ".html", getCacheDir());
+        StringBuilder textContent = new StringBuilder();
+
+        try (java.util.zip.ZipFile zipFile = new java.util.zip.ZipFile(tempDocx);
+             java.io.OutputStreamWriter writer = new java.io.OutputStreamWriter(
+                     new java.io.FileOutputStream(tempHtml), StandardCharsets.UTF_8)) {
+            java.util.zip.ZipEntry entry = zipFile.getEntry("word/document.xml");
+            if (entry == null) {
+                throw new IOException("word/document.xml not found");
+            }
+
+            writer.write("<html><head><meta charset='UTF-8'>");
+            writeDocHtmlStyles(writer);
+            writer.write("</head><body>");
+
+            try (java.io.InputStream xmlIn = zipFile.getInputStream(entry)) {
+                XmlPullParser parser = android.util.Xml.newPullParser();
+                parser.setInput(xmlIn, "UTF-8");
+
+                final String wordNs = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+                StringBuilder curText = new StringBuilder();
+                boolean inTextTag = false;
+                int tableDepth = 0;
+                int cellDepth = 0;
+
+                for (int event = parser.getEventType();
+                     event != XmlPullParser.END_DOCUMENT;
+                     event = parser.next()) {
+                    if (event == XmlPullParser.START_TAG) {
+                        if (isWordTag(parser, wordNs, "tbl")) {
+                            tableDepth++;
+                            writer.write("<div class='doc-table-wrap'><table>");
+                        } else if (isWordTag(parser, wordNs, "tr")) {
+                            writer.write("<tr>");
+                        } else if (isWordTag(parser, wordNs, "tc")) {
+                            cellDepth++;
+                            writer.write("<td>");
+                        } else if (isWordTag(parser, wordNs, "p")) {
+                            curText.setLength(0);
+                        } else if (isWordTag(parser, wordNs, "t")) {
+                            inTextTag = true;
+                        } else if (isWordTag(parser, wordNs, "tab")) {
+                            curText.append('\t');
+                        } else if (isWordTag(parser, wordNs, "br")) {
+                            curText.append('\n');
+                        }
+                    } else if (event == XmlPullParser.TEXT && inTextTag) {
+                        curText.append(parser.getText());
+                    } else if (event == XmlPullParser.END_TAG) {
+                        if (isWordTag(parser, wordNs, "t")) {
+                            inTextTag = false;
+                        } else if (isWordTag(parser, wordNs, "p")) {
+                            char separator = cellDepth > 0 ? '\t' : '\n';
+                            appendLightweightParagraph(curText, writer, textContent, separator);
+                        } else if (isWordTag(parser, wordNs, "tc")) {
+                            writer.write("</td>");
+                            cellDepth = Math.max(0, cellDepth - 1);
+                        } else if (isWordTag(parser, wordNs, "tr")) {
+                            writer.write("</tr>");
+                            if (tableDepth > 0 && textContent.length() < TEXT_CAP) {
+                                textContent.append('\n');
+                            }
+                        } else if (isWordTag(parser, wordNs, "tbl")) {
+                            writer.write("</table></div>");
+                            tableDepth = Math.max(0, tableDepth - 1);
+                        }
                     }
-                    
-                    is.close();
-                    return text;
-                } catch (IOException e) {
-                    return "Ошибка загрузки файла: " + e.getMessage();
                 }
             }
 
-            @Override
-			protected void onPostExecute(String content) {
-                documentContent = content;
-				// Сохраняем в кэш для будущих загрузок (только текст), кроме очень больших документов
-				if (tempHtmlFilePath == null) {
-					documentCache.put(fileName, content);
-				}
+            writer.write("</body></html>");
+        }
 
-				// Если HTML не подготовлен (потоковый режим), просто загрузим файл, иначе сгенерируем из текста
-				if (tempHtmlFilePath == null) {
-					if (documentHtml == null || documentHtml.isEmpty()) {
-						documentHtml = convertToHtmlOptimized(content);
-					}
-				}
+        result.text = textContent.toString();
+        result.htmlFilePath = tempHtml.getAbsolutePath();
+        return result;
+    }
 
-                displayDocument();
-                hideLoadingProgress();
+    private boolean isWordTag(XmlPullParser parser, String wordNs, String localName) {
+        if (!wordNs.equals(parser.getNamespace())) {
+            return false;
+        }
+        String name = parser.getName();
+        return localName.equals(name) || ("w:" + localName).equals(name);
+    }
+
+    private void appendLightweightParagraph(StringBuilder curText, java.io.Writer writer,
+                                            StringBuilder textContent, char textSeparator) throws IOException {
+        if (curText.length() == 0) {
+            return;
+        }
+        String raw = curText.toString().trim();
+        if (raw.isEmpty()) {
+            return;
+        }
+        writer.write("<p>");
+        writer.write(escapeHtml(raw));
+        writer.write("</p>");
+        if (textContent.length() < TEXT_CAP) {
+            int remain = TEXT_CAP - textContent.length();
+            String toAdd = raw;
+            if (toAdd.length() > remain) {
+                toAdd = toAdd.substring(0, remain);
             }
-        }.execute();
+            textContent.append(toAdd).append(textSeparator);
+        }
+    }
+
+    private void deleteTempHtmlFile(String path) {
+        if (path == null) {
+            return;
+        }
+        try {
+            new java.io.File(path).delete();
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private void cleanupRenderTempFiles() {
+        java.io.File cacheDir = getCacheDir();
+        if (cacheDir == null) {
+            return;
+        }
+        String[] prefixes = {"docimg_", "doc_light_", "doc_src_"};
+        java.io.File[] files = cacheDir.listFiles();
+        if (files == null) {
+            return;
+        }
+        for (java.io.File file : files) {
+            String name = file.getName();
+            for (String prefix : prefixes) {
+                if (name.startsWith(prefix)) {
+                    try {
+                        file.delete();
+                    } catch (Throwable ignored) {
+                    }
+                    break;
+                }
+            }
+        }
     }
 
     private String convertToHtmlOptimized(String text) {
@@ -444,33 +559,6 @@ public class FullView extends AppCompatActivity {
             }
         }
         return result.toString();
-    }
-
-    private String convertToHtml(String text) {
-        // Простое преобразование текста в HTML (для обратной совместимости)
-        String html = "<html><head><meta charset='UTF-8'>" +
-                "<style>" +
-                "body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; font-size: 34px; }" +
-                ".highlight { background-color: #FFEB3B !important; color: #000000 !important; padding: 2px 4px; border-radius: 3px; font-weight: bold; display: inline; }" +
-                ".highlight.active { background-color: #4CAF50 !important; color: #FFFFFF !important; padding: 3px 6px !important; border-radius: 5px !important; font-weight: bold !important; display: inline !important; border: 3px solid #2E7D32 !important; box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important; }" +
-                ".doc-image { margin: 20px 0; text-align: center; }" +
-                ".doc-image img { max-width: 100%; height: auto; }" +
-                "</style></head><body>";
-        
-        // Разбиваем текст на параграфы
-        String[] paragraphs = text.split("\n");
-        for (String paragraph : paragraphs) {
-            if (!paragraph.trim().isEmpty()) {
-                html += "<p>" + paragraph.replace("&", "&amp;")
-                        .replace("<", "&lt;")
-                        .replace(">", "&gt;")
-                        .replace("\"", "&quot;")
-                        .replace("'", "&#39;") + "</p>";
-            }
-        }
-        
-        html += "</body></html>";
-        return html;
     }
 
     private String convertToHtmlWithHighlight(String text) {
@@ -521,21 +609,21 @@ public class FullView extends AppCompatActivity {
         return html.toString();
     }
 
-    private void appendRunToHtml(XWPFRun run, java.io.Writer writer) throws IOException {
-        if (run == null || writer == null) {
-            return;
+    private void appendParagraphToHtml(XWPFParagraph paragraph, java.io.Writer writer,
+                                       StringBuilder textContent, int textCap, char textSeparator) throws IOException {
+        String paragraphText = paragraph.getText();
+        if (paragraphText != null && !paragraphText.trim().isEmpty() && textContent.length() < textCap) {
+            int toAppend = Math.min(paragraphText.length(), textCap - textContent.length());
+            textContent.append(paragraphText, 0, toAppend).append(textSeparator);
         }
-
-        appendPictures(run, writer);
-
-        String runText = run.toString();
-        if (runText == null || runText.isEmpty()) {
-            return;
+        writer.write("<p>");
+        for (XWPFRun run : paragraph.getRuns()) {
+            appendPictures(run, writer);
         }
-        String escaped = escapeHtml(runText);
-        if (run.isBold()) escaped = "<b>" + escaped + "</b>";
-        if (run.isItalic()) escaped = "<i>" + escaped + "</i>";
-        writer.write(escaped);
+        if (paragraphText != null && !paragraphText.isEmpty()) {
+            writer.write(escapeHtml(paragraphText));
+        }
+        writer.write("</p>");
     }
 
     private void appendPictures(XWPFRun run, java.io.Writer writer) throws IOException {
@@ -544,15 +632,17 @@ public class FullView extends AppCompatActivity {
             return;
         }
         for (XWPFPicture picture : pictures) {
-            String dataUri = buildDataUri(picture);
-            if (dataUri == null) continue;
+            String imageSrc = buildImageSrc(picture);
+            if (imageSrc == null) {
+                continue;
+            }
             writer.write("<div class='doc-image'><img src='");
-            writer.write(dataUri);
+            writer.write(imageSrc);
             writer.write("' alt='' /></div>");
         }
     }
 
-    private String buildDataUri(XWPFPicture picture) {
+    private String buildImageSrc(XWPFPicture picture) {
         if (picture == null) {
             return null;
         }
@@ -565,12 +655,22 @@ public class FullView extends AppCompatActivity {
             if (bytes == null || bytes.length == 0) {
                 return null;
             }
-            String mime = guessMimeType(pictureData.suggestFileExtension());
-            if (mime == null || mime.trim().isEmpty()) {
-                mime = "application/octet-stream";
+            String ext = pictureData.suggestFileExtension();
+            if (ext == null || ext.isEmpty()) {
+                ext = "bin";
             }
-            String base64 = Base64.encodeToString(bytes, Base64.NO_WRAP);
-            return "data:" + mime + ";base64," + base64;
+            if (bytes.length <= MAX_INLINE_IMAGE_BYTES) {
+                String mime = guessMimeType(ext);
+                if (mime == null || mime.trim().isEmpty()) {
+                    mime = "application/octet-stream";
+                }
+                return "data:" + mime + ";base64," + Base64.encodeToString(bytes, Base64.NO_WRAP);
+            }
+            java.io.File imgFile = java.io.File.createTempFile("docimg_", "." + ext, getCacheDir());
+            try (java.io.FileOutputStream fos = new java.io.FileOutputStream(imgFile)) {
+                fos.write(bytes);
+            }
+            return "file://" + imgFile.getAbsolutePath();
         } catch (Exception e) {
             android.util.Log.e("DocRender", "Не удалось подготовить изображение", e);
             return null;
@@ -700,7 +800,7 @@ public class FullView extends AppCompatActivity {
                             String displayName = (docTitle != null && !docTitle.isEmpty()) ? docTitle : fileName;
                             String title = displayName + ": документ";
                             BookmarkStore.addBookmark(FullView.this, fileName, 0, title);
-                            runOnUiThread(() -> Toast.makeText(FullView.this, "Закладка сохранена", Toast.LENGTH_SHORT).show());
+                            runOnUiThread(() -> Toast.makeText(FullView.this, R.string.fullview_bookmark_saved, Toast.LENGTH_SHORT).show());
                         }
                     }
                 );
@@ -712,14 +812,24 @@ public class FullView extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
-        if (currentTask != null) {
-            currentTask.cancel(true);
+        loadCancelled = true;
+        closeOptionsMenu();
+        if (toolbar != null) {
+            toolbar.dismissPopupMenus();
         }
-		// Удаляем временный HTML файл, если он был создан
-		if (tempHtmlFilePath != null) {
-			try { new java.io.File(tempHtmlFilePath).delete(); } catch (Throwable ignored) {}
-			tempHtmlFilePath = null;
-		}
+        if (docLoadExecutor != null) {
+            docLoadExecutor.shutdownNow();
+            docLoadExecutor = null;
+        }
+        if (webView != null) {
+            webView.stopLoading();
+            webView.setWebViewClient(null);
+            webView.destroy();
+            webView = null;
+        }
+        deleteTempHtmlFile(tempHtmlFilePath);
+        tempHtmlFilePath = null;
+        cleanupRenderTempFiles();
         super.onDestroy();
     }
 
@@ -738,89 +848,6 @@ public class FullView extends AppCompatActivity {
         
         // Выделяем все результаты в документе и создаем список для навигации
         highlightAllSearchResults(normalizedQuery);
-    }
-
-    private class DocSearchTask extends AsyncTask<Void, Void, List<DocSearchResult>> {
-        private final String query;
-        private final boolean caseSensitive;
-        private final boolean wholeWordsOnly;
-        private Exception error;
-
-        DocSearchTask(String query, boolean caseSensitive, boolean wholeWordsOnly) {
-            this.query = query;
-            this.caseSensitive = caseSensitive;
-            this.wholeWordsOnly = wholeWordsOnly;
-        }
-
-        @Override
-        protected List<DocSearchResult> doInBackground(Void... voids) {
-            List<DocSearchResult> results = new ArrayList<>();
-            
-            try {
-                String searchText = caseSensitive ? documentContent : documentContent.toLowerCase(Locale.getDefault());
-                    String searchQuery = caseSensitive ? query : query.toLowerCase(Locale.getDefault());
-                
-                int from = 0;
-                while (true) {
-                    int idx = searchText.indexOf(searchQuery, from);
-                    if (idx < 0) break;
-
-                    // Проверяем условие поиска по целым словам
-                    if (wholeWordsOnly && !isWholeWordMatch(searchText, idx, searchQuery.length())) {
-                        from = idx + 1;
-                        continue;
-                    }
-
-                    // Находим контекст вокруг найденного текста
-                    int contextStart = Math.max(0, idx - 50);
-                    int contextEnd = Math.min(searchText.length(), idx + searchQuery.length() + 50);
-                    String context = searchText.substring(contextStart, contextEnd);
-                    
-                    results.add(new DocSearchResult(0, searchQuery, idx, 1));
-                    from = idx + 1;
-                }
-            } catch (Exception e) {
-                error = e;
-            }
-            
-            return results;
-        }
-
-        private boolean isWholeWordMatch(String text, int start, int length) {
-            // Проверяем символ перед найденным текстом
-            if (start > 0 && Character.isLetterOrDigit(text.charAt(start - 1))) {
-                return false;
-            }
-            
-            // Проверяем символ после найденного текста
-            int end = start + length;
-            if (end < text.length() && Character.isLetterOrDigit(text.charAt(end))) {
-                return false;
-            }
-            
-            return true;
-        }
-
-        @Override
-        protected void onPostExecute(List<DocSearchResult> results) {
-            if (error != null) {
-                Toast.makeText(FullView.this, "Ошибка поиска: " + error.getMessage(), Toast.LENGTH_LONG).show();
-                return;
-            }
-            
-            // Обновляем результаты поиска
-            searchResults.clear();
-            searchResults.addAll(results);
-            
-            updateNavigationButtons();
-
-            if (!searchResults.isEmpty()) {
-                currentResultIndex = 0;
-                // Не вызываем navigateToResult, так как все результаты уже выделены
-            } else {
-                currentResultIndex = -1;
-            }
-        }
     }
 
     @Override
@@ -984,7 +1011,7 @@ public class FullView extends AppCompatActivity {
                 currentResultIndex = -1;
                 updateTitleWithSearchInfo(-1);
                 // Если ничего не найдено, показываем toast
-                android.widget.Toast.makeText(this, "Ничего не найдено", android.widget.Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, R.string.search_nothing_found, Toast.LENGTH_SHORT).show();
             }
             updateNavigationButtons();
             
@@ -1165,7 +1192,7 @@ public class FullView extends AppCompatActivity {
                         
                         // Показываем уведомление о переходе к закладке
                         runOnUiThread(() -> {
-                            Toast.makeText(FullView.this, "Переход к закладке на странице " + newPage, Toast.LENGTH_SHORT).show();
+                            Toast.makeText(FullView.this, getString(R.string.fullview_bookmark_jump_page, newPage), Toast.LENGTH_SHORT).show();
                         });
                     } catch (NumberFormatException e) {
                         android.util.Log.e("BookmarkJump", "Ошибка парсинга результата: " + result, e);
@@ -1292,7 +1319,7 @@ public class FullView extends AppCompatActivity {
     
     private void showPageSelectionDialog() {
         if (totalPages <= 1) {
-            Toast.makeText(this, "Документ содержит только одну страницу", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.fullview_single_page_only, Toast.LENGTH_SHORT).show();
             return;
         }
         

@@ -1,16 +1,14 @@
 apply plugin: 'com.android.application'
 
-def deepseekApiKey = project.findProperty("deepseekApiKey") ?: ""
-
 android {
-    compileSdk 34
+    compileSdk 36
 
     defaultConfig {
         applicationId "by.instruction.papera"
         minSdk 26
-        targetSdk 35
-        versionCode 76
-        versionName "6.2.2"
+        targetSdk 36
+        versionCode 83
+        versionName "6.2.9"
 
 // Поддержка страниц памяти 16 КБ
         ndk {
@@ -23,11 +21,7 @@ android {
     buildTypes {
         release {
             minifyEnabled false
-            buildConfigField "String", "DEEPSEEK_API_KEY", "\"${deepseekApiKey}\""
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-        }
-        debug {
-            buildConfigField "String", "DEEPSEEK_API_KEY", "\"${deepseekApiKey}\""
         }
     }
 
@@ -82,5 +76,4 @@ dependencies {
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
 
     implementation 'androidx.cardview:cardview:1.0.0'
-    implementation 'androidx.multidex:multidex:2.0.1'
 }
