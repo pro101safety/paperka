@@ -13,7 +13,10 @@ public class Contact extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        EdgeToEdgeHelper.enable(this);
         setContentView(R.layout.activity_contact);
+        View root = ((android.view.ViewGroup) findViewById(android.R.id.content)).getChildAt(0);
+        EdgeToEdgeHelper.applySystemBarsPadding(root);
 
         TextView azbukaLink = findViewById(R.id.azbuka_link);
         if (azbukaLink != null) {

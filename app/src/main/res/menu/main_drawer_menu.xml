@@ -27,11 +27,6 @@
         android:title="Шумомер"/>
 
     <item
-        android:id="@+id/thermometer"
-        android:icon="@drawable/ic_drawer_thermometer_24"
-        android:title="Термометр"/>
-
-    <item
         android:id="@+id/compass"
         android:icon="@drawable/ic_drawer_compass_24"
         android:title="Компас"/>

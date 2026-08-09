@@ -19,7 +19,6 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:background="?attr/colorSurface"
-                android:fitsSystemWindows="true"
                 app:title="Блокнот ИОТа" />
 
             <androidx.recyclerview.widget.RecyclerView

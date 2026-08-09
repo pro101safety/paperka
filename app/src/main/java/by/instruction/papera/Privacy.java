@@ -15,7 +15,10 @@ public class Privacy extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        EdgeToEdgeHelper.enable(this);
         setContentView(R.layout.activity_privacy);
+        android.view.View root = ((android.view.ViewGroup) findViewById(android.R.id.content)).getChildAt(0);
+        EdgeToEdgeHelper.applySystemBarsPadding(root);
 
         TextView versionValue = findViewById(R.id.text_version_value);
         if (versionValue != null) {

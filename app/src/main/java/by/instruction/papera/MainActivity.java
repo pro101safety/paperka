@@ -16,8 +16,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import android.content.res.Configuration;
-import androidx.core.view.WindowCompat;
-import androidx.core.view.WindowInsetsControllerCompat;
 
 import androidx.annotation.NonNull;
 import androidx.activity.OnBackPressedCallback;
@@ -81,6 +79,7 @@ public class MainActivity extends AppCompatActivity {
     ListView listView;
     ArrayAdapter<SearchResultItem> arrayAdapter;
     List<SearchResultItem> searchResults;
+    private String lastCatalogSearchQuery = "";
     private DrawerLayout drawerLayout;
     private NavigationView navigationView;
     private MaterialToolbar toolbar;
@@ -89,13 +88,12 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        EdgeToEdgeHelper.enable(this);
         setContentView(R.layout.activity_main);
-
-        // Включаем стандартную раскладку без налезания под статус-бар
-        WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
 
         // Toolbar для стабильного отображения меню/поиска в светлой теме
         toolbar = findViewById(R.id.toolbar);
+        EdgeToEdgeHelper.applyToolbarScreenInsets(toolbar, findViewById(R.id.root));
         if (toolbar != null && getSupportActionBar() == null) {
             setSupportActionBar(toolbar);
             // Устанавливаем кастомный заголовок с уменьшенным шрифтом
@@ -112,6 +110,7 @@ public class MainActivity extends AppCompatActivity {
 
         drawerLayout = findViewById(R.id.drawer_layout);
         navigationView = findViewById(R.id.navigation_view);
+        EdgeToEdgeHelper.applyNavigationViewInsets(navigationView);
         callPermissionLauncher = registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
             if (Boolean.TRUE.equals(isGranted)) {
                 placeCallDirectly();
@@ -163,7 +162,7 @@ public class MainActivity extends AppCompatActivity {
         // Добавляем обработчик нажатий на элементы списка поиска
         listView.setOnItemClickListener((parent, view, position, id) -> {
             SearchResultItem item = searchResults.get(position);
-            openDocument(item.getFileName(), item.getTitle());
+            openDocument(item.getFileName(), item.getTitle(), lastCatalogSearchQuery);
         });
         //финал кода поиска
 
@@ -569,13 +568,15 @@ public class MainActivity extends AppCompatActivity {
     private void performSearch(String query) {
         if (query == null || query.trim().isEmpty()) {
             // Очищаем результаты поиска
+            lastCatalogSearchQuery = "";
             searchResults.clear();
             arrayAdapter.notifyDataSetChanged();
             return;
         }
 
         searchResults.clear();
-        String lowerQuery = query.toLowerCase().trim();
+        lastCatalogSearchQuery = query.trim();
+        String lowerQuery = lastCatalogSearchQuery.toLowerCase();
 
         // Поиск по всем главам и темам
         for (Chapter chapter : chapterList) {
@@ -720,6 +721,10 @@ public class MainActivity extends AppCompatActivity {
     
     // Метод для открытия документа
     private void openDocument(String fileName, String docTitle) {
+        openDocument(fileName, docTitle, null);
+    }
+
+    private void openDocument(String fileName, String docTitle, String initialSearchQuery) {
         // Проверяем наличие файла с расширениями .doc или .docx
         String actualFileName = null;
         try {
@@ -740,6 +745,9 @@ public class MainActivity extends AppCompatActivity {
         Intent intent = new Intent(this, FullView.class);
         intent.putExtra("fileName", actualFileName);
         intent.putExtra("docTitle", docTitle);
+        if (initialSearchQuery != null && !initialSearchQuery.trim().isEmpty()) {
+            intent.putExtra("initialSearchQuery", initialSearchQuery.trim());
+        }
         startActivity(intent);
     }
 
@@ -767,9 +775,6 @@ public class MainActivity extends AppCompatActivity {
             return true;
         } else if (id == R.id.noise_meter) {
             startActivity(new Intent(MainActivity.this, NoiseMeterActivity.class));
-            return true;
-        } else if (id == R.id.thermometer) {
-            startActivity(new Intent(MainActivity.this, ThermometerActivity.class));
             return true;
         } else if (id == R.id.compass) {
             startActivity(new Intent(MainActivity.this, CompassActivity.class));

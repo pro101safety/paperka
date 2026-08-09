@@ -16,7 +16,6 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
-import androidx.core.view.WindowCompat;
 
 import com.google.android.material.appbar.MaterialToolbar;
 
@@ -45,10 +44,11 @@ public class NoiseMeterActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        EdgeToEdgeHelper.enable(this);
         setContentView(R.layout.activity_noise_meter);
-        WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
 
         MaterialToolbar toolbar = findViewById(R.id.toolbar);
+        EdgeToEdgeHelper.applyToolbarScreenInsets(toolbar, findViewById(android.R.id.content));
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);

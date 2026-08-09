@@ -9,7 +9,6 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.view.WindowCompat;
 
 import com.google.android.material.appbar.MaterialToolbar;
 
@@ -29,10 +28,11 @@ public class LevelActivity extends AppCompatActivity implements SensorEventListe
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        EdgeToEdgeHelper.enable(this);
         setContentView(R.layout.activity_level);
-        WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
 
         MaterialToolbar toolbar = findViewById(R.id.toolbar);
+        EdgeToEdgeHelper.applyToolbarScreenInsets(toolbar, findViewById(android.R.id.content));
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);

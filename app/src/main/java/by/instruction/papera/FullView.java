@@ -1,19 +1,32 @@
 package by.instruction.papera;
 
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.Base64;
 import android.view.KeyEvent;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.BaseAdapter;
+import android.widget.CheckBox;
+import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
+import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -43,6 +56,7 @@ import java.util.Map;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
@@ -53,28 +67,34 @@ class DocSearchResult {
     final String text;
     final int position;
     final int page;
-    
-    DocSearchResult(int index, String text, int position, int page) {
+    final String snippet;
+
+    DocSearchResult(int index, String text, int position, int page, String snippet) {
         this.index = index;
         this.text = text;
         this.position = position;
         this.page = page;
+        this.snippet = snippet != null ? snippet : text;
     }
-    
+
     public int getIndex() {
         return index;
     }
-    
+
     public String getText() {
         return text;
     }
-    
+
     public int getPosition() {
         return position;
     }
-    
+
     public int getPage() {
         return page;
+    }
+
+    public String getSnippet() {
+        return snippet;
     }
 }
 
@@ -85,10 +105,18 @@ public class FullView extends AppCompatActivity {
     private int jumpToPage = -1; // Страница для перехода при открытии из закладки
     private WebView webView;
     
-    // Кнопки навигации по результатам поиска
-    private LinearLayout searchNavigationLayout;
+    // Панель поиска в документе
+    private LinearLayout searchPanel;
+    private EditText searchInput;
+    private TextView searchCountText;
     private ImageButton btnSearchPrev;
     private ImageButton btnSearchNext;
+    private ImageButton btnSearchResultsToggle;
+    private ImageButton btnSearchClose;
+    private CheckBox checkCaseSensitive;
+    private CheckBox checkWholeWords;
+    private ListView searchResultsList;
+    private SearchSnippetAdapter searchSnippetAdapter;
 
     // Индикатор страниц
     private TextView pageIndicator;
@@ -96,30 +124,49 @@ public class FullView extends AppCompatActivity {
     private int currentPage = 1;
     private long lastScrollTime = 0;
     private static final long SCROLL_THROTTLE_MS = 100;
-    
+    private static final long SEARCH_DEBOUNCE_MS = 300;
+
     // Настройки поиска
     private boolean caseSensitive = false;
     private boolean wholeWordsOnly = false;
-    
+    private boolean searchPanelVisible = false;
+    private boolean searchResultsListVisible = false;
+    private boolean documentPageReady = false;
+    private String pendingInitialSearchQuery;
+
     // Навигация по результатам поиска
-    private List<DocSearchResult> searchResults = new ArrayList<>();
+    private final List<DocSearchResult> searchResults = new ArrayList<>();
     private int currentResultIndex = -1;
     private String lastSearchQuery = "";
     private String documentContent = "";
     private String documentHtml = "";
-	private String tempHtmlFilePath = null;
-    
+    private String tempHtmlFilePath = null;
+    private final Handler searchHandler = new Handler(Looper.getMainLooper());
+    private Runnable pendingSearchRunnable;
+    private final AtomicInteger searchGeneration = new AtomicInteger(0);
+    private boolean searchApiInjected = false;
+
     // Прогресс загрузки
     private ProgressBar loadingProgress;
 
     private MaterialToolbar toolbar;
-    
-    // Кэш для оптимизации (LRU, не более 5 документов)
+
+    private static final class CachedDocument {
+        final String text;
+        final String html;
+
+        CachedDocument(String text, String html) {
+            this.text = text;
+            this.html = html;
+        }
+    }
+
+    // Кэш для оптимизации (LRU, не более 5 документов: текст + HTML при возможности)
     private static final int DOCUMENT_CACHE_MAX_ENTRIES = 5;
-    private static final Map<String, String> documentCache = Collections.synchronizedMap(
-            new LinkedHashMap<String, String>(DOCUMENT_CACHE_MAX_ENTRIES + 1, 0.75f, true) {
+    private static final Map<String, CachedDocument> documentCache = Collections.synchronizedMap(
+            new LinkedHashMap<String, CachedDocument>(DOCUMENT_CACHE_MAX_ENTRIES + 1, 0.75f, true) {
                 @Override
-                protected boolean removeEldestEntry(Map.Entry<String, String> eldest) {
+                protected boolean removeEldestEntry(Map.Entry<String, CachedDocument> eldest) {
                     return size() > DOCUMENT_CACHE_MAX_ENTRIES;
                 }
             }
@@ -137,34 +184,26 @@ public class FullView extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        EdgeToEdgeHelper.enable(this);
         setContentView(R.layout.activity_full_view);
 
         webView = findViewById(R.id.webView);
-        
-        // Инициализация кнопок навигации
-        searchNavigationLayout = findViewById(R.id.searchNavigationLayout);
-        btnSearchPrev = findViewById(R.id.btnSearchPrev);
-        btnSearchNext = findViewById(R.id.btnSearchNext);
-        
+
+        setupSearchPanel();
+
         // Инициализация индикатора страниц
         pageIndicator = findViewById(R.id.pageIndicator);
         initializePageIndicator();
-        
+
         // Настройка обработчика касаний для индикатора
         setupPageIndicatorTouchListener();
-        
+
         // Инициализация прогресса загрузки
         loadingProgress = findViewById(R.id.loadingProgress);
-        
-        // Настройка обработчиков для кнопок навигации
-        btnSearchPrev.setOnClickListener(v -> navigateToPreviousResult());
-        btnSearchNext.setOnClickListener(v -> navigateToNextResult());
-        
-        // Гарантируем стандартные отступы, чтобы тулбар не уходил под статус-бар
-        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
 
         // Подключаем Toolbar как ActionBar, чтобы отрисовать меню (лупу/закладку)
         toolbar = findViewById(R.id.toolbar);
+        EdgeToEdgeHelper.applyToolbarScreenInsets(toolbar, webView);
         if (toolbar != null && getSupportActionBar() == null) {
             setSupportActionBar(toolbar);
             // Устанавливаем кастомный заголовок с уменьшенным шрифтом
@@ -178,17 +217,112 @@ public class FullView extends AppCompatActivity {
         fileName = getIntent().getStringExtra("fileName");
         docTitle = getIntent().getStringExtra("docTitle");
         jumpToPage = getIntent().getIntExtra("jumpToPage", -1);
-        
+        pendingInitialSearchQuery = getIntent().getStringExtra("initialSearchQuery");
+
         android.util.Log.d("BookmarkJump", "Получены параметры - fileName: " + fileName + ", jumpToPage: " + jumpToPage);
-        
+
         if (fileName == null) {
             Toast.makeText(this, R.string.fullview_no_filename, Toast.LENGTH_SHORT).show();
             finish();
             return;
         }
 
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                if (searchPanelVisible) {
+                    closeSearchPanel(true);
+                    return;
+                }
+                setEnabled(false);
+                getOnBackPressedDispatcher().onBackPressed();
+            }
+        });
+
         // Загружаем DOC файл
         loadDocFile();
+    }
+
+    private void setupSearchPanel() {
+        searchPanel = findViewById(R.id.searchPanel);
+        searchInput = findViewById(R.id.searchInput);
+        searchCountText = findViewById(R.id.searchCountText);
+        btnSearchPrev = findViewById(R.id.btnSearchPrev);
+        btnSearchNext = findViewById(R.id.btnSearchNext);
+        btnSearchResultsToggle = findViewById(R.id.btnSearchResultsToggle);
+        btnSearchClose = findViewById(R.id.btnSearchClose);
+        checkCaseSensitive = findViewById(R.id.checkCaseSensitive);
+        checkWholeWords = findViewById(R.id.checkWholeWords);
+        searchResultsList = findViewById(R.id.searchResultsList);
+
+        searchSnippetAdapter = new SearchSnippetAdapter();
+        searchResultsList.setAdapter(searchSnippetAdapter);
+        searchResultsList.setOnItemClickListener((parent, view, position, id) -> {
+            if (position >= 0 && position < searchResults.size()) {
+                currentResultIndex = position;
+                navigateToResult(position);
+                setSearchResultsListVisible(false);
+            }
+        });
+
+        btnSearchPrev.setOnClickListener(v -> navigateToPreviousResult());
+        btnSearchNext.setOnClickListener(v -> navigateToNextResult());
+        btnSearchClose.setOnClickListener(v -> closeSearchPanel(true));
+        btnSearchResultsToggle.setOnClickListener(v ->
+                setSearchResultsListVisible(!searchResultsListVisible));
+
+        checkCaseSensitive.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            caseSensitive = isChecked;
+            if (searchPanelVisible) {
+                scheduleSearch(searchInput.getText() != null ? searchInput.getText().toString() : "");
+            }
+        });
+        checkWholeWords.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            wholeWordsOnly = isChecked;
+            if (searchPanelVisible) {
+                scheduleSearch(searchInput.getText() != null ? searchInput.getText().toString() : "");
+            }
+        });
+
+        searchInput.setOnEditorActionListener((v, actionId, event) -> {
+            boolean isSearch = actionId == EditorInfo.IME_ACTION_SEARCH
+                    || (event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER
+                    && event.getAction() == KeyEvent.ACTION_DOWN);
+            if (isSearch) {
+                String query = v.getText() != null ? v.getText().toString() : "";
+                String normalized = DocumentSearchMatcher.normalizeQuery(query);
+                if (!normalized.isEmpty()
+                        && normalized.equals(lastSearchQuery)
+                        && !searchResults.isEmpty()) {
+                    navigateToNextResult();
+                } else {
+                    if (pendingSearchRunnable != null) {
+                        searchHandler.removeCallbacks(pendingSearchRunnable);
+                        pendingSearchRunnable = null;
+                    }
+                    runSearch(query, true);
+                }
+                return true;
+            }
+            return false;
+        });
+
+        searchInput.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                scheduleSearch(s != null ? s.toString() : "");
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+            }
+        });
+
+        updateNavigationButtons();
     }
 
     private void loadDocFile() {
@@ -203,10 +337,14 @@ public class FullView extends AppCompatActivity {
             DocLoadResult result;
             try {
                 if (documentCache.containsKey(fileName)) {
-                    String cached = documentCache.get(fileName);
+                    CachedDocument cached = documentCache.get(fileName);
                     result = new DocLoadResult();
-                    result.text = cached;
-                    result.html = convertToHtmlOptimized(cached);
+                    result.text = cached != null ? cached.text : "";
+                    if (cached != null && cached.html != null && !cached.html.isEmpty()) {
+                        result.html = cached.html;
+                    } else {
+                        result.html = convertToHtmlOptimized(result.text);
+                    }
                 } else {
                     result = loadDocumentFromAssets();
                 }
@@ -240,10 +378,17 @@ public class FullView extends AppCompatActivity {
         }
 
         documentContent = result.text != null ? result.text : "";
+        documentPageReady = false;
 
         if (result.htmlFilePath != null) {
             tempHtmlFilePath = result.htmlFilePath;
             documentHtml = null;
+            if (documentContent != null
+                    && !documentContent.startsWith("Ошибка загрузки")
+                    && documentContent.length() < TEXT_CAP) {
+                // HTML на диске с временными картинками — кэшируем только текст
+                documentCache.put(fileName, new CachedDocument(documentContent, null));
+            }
         } else {
             tempHtmlFilePath = null;
             if (result.html != null && !result.html.isEmpty()) {
@@ -254,12 +399,15 @@ public class FullView extends AppCompatActivity {
             if (documentContent != null
                     && !documentContent.startsWith("Ошибка загрузки")
                     && documentContent.length() < TEXT_CAP) {
-                documentCache.put(fileName, documentContent);
+                documentCache.put(fileName, new CachedDocument(documentContent, documentHtml));
             }
         }
 
         displayDocument();
         hideLoadingProgress();
+        if (!searchPanelVisible) {
+            restoreDocumentTitle();
+        }
     }
 
     private DocLoadResult loadDocumentFromAssets() throws IOException, XmlPullParserException {
@@ -561,54 +709,6 @@ public class FullView extends AppCompatActivity {
         return result.toString();
     }
 
-    private String convertToHtmlWithHighlight(String text) {
-        // Оптимизированное преобразование текста в HTML с сохранением выделения
-        StringBuilder html = new StringBuilder(text.length() + 2000); // Предварительное выделение памяти
-        
-        html.append("<html><head><meta charset='UTF-8'>")
-            .append("<style>")
-            .append("body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; font-size: 34px; }")
-            .append(".highlight { background-color: #FFEB3B !important; color: #000000 !important; padding: 2px 4px; border-radius: 3px; font-weight: bold; display: inline; }")
-            .append(".highlight.active { background-color: #4CAF50 !important; color: #FFFFFF !important; padding: 3px 6px !important; border-radius: 5px !important; font-weight: bold !important; display: inline !important; border: 3px solid #2E7D32 !important; box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important; }")
-            .append(".doc-image { margin: 20px 0; text-align: center; }")
-            .append(".doc-image img { max-width: 100%; height: auto; }")
-            .append("</style></head><body>");
-        
-        // Оптимизированная обработка параграфов с выделением
-        String[] paragraphs = text.split("\n");
-        for (String paragraph : paragraphs) {
-            String trimmed = paragraph.trim();
-            if (!trimmed.isEmpty()) {
-                html.append("<p>");
-                
-                // Обработка выделения
-                if (trimmed.contains("<span class='highlight'>")) {
-                    // Сначала защищаем теги выделения от экранирования
-                    String protectedParagraph = trimmed
-                        .replace("<span class='highlight'>", "___HIGHLIGHT_START___")
-                        .replace("</span>", "___HIGHLIGHT_END___");
-                
-                    // Экранируем HTML символы
-                    String escapedParagraph = escapeHtml(protectedParagraph);
-                
-                    // Восстанавливаем теги выделения
-                    escapedParagraph = escapedParagraph
-                        .replace("___HIGHLIGHT_START___", "<span class='highlight'>")
-                        .replace("___HIGHLIGHT_END___", "</span>");
-                
-                    html.append(escapedParagraph);
-                } else {
-                    html.append(escapeHtml(trimmed));
-                }
-                
-                html.append("</p>");
-            }
-        }
-        
-        html.append("</body></html>");
-        return html.toString();
-    }
-
     private void appendParagraphToHtml(XWPFParagraph paragraph, java.io.Writer writer,
                                        StringBuilder textContent, int textCap, char textSeparator) throws IOException {
         String paragraphText = paragraph.getText();
@@ -703,34 +803,45 @@ public class FullView extends AppCompatActivity {
     }
 
     private void displayDocument() {
-		webView.getSettings().setJavaScriptEnabled(true);
+        documentPageReady = false;
+        searchApiInjected = false;
+        webView.getSettings().setJavaScriptEnabled(true);
         webView.getSettings().setLoadWithOverviewMode(true);
         webView.getSettings().setUseWideViewPort(true);
         webView.getSettings().setBuiltInZoomControls(true);
         webView.getSettings().setDisplayZoomControls(false);
         webView.getSettings().setSupportZoom(true);
-		webView.getSettings().setAllowFileAccess(true);
+        webView.getSettings().setAllowFileAccess(true);
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
                 android.util.Log.d("PageIndicator", "Страница загружена");
-                
+                documentPageReady = true;
+
                 // Инициализируем индикатор страниц после загрузки
                 initializePageIndicator();
-                
+
                 // Если нужно перейти к определенной странице (из закладки)
                 if (jumpToPage >= 0) {
                     android.util.Log.d("BookmarkJump", "Переход к закладке на странице: " + jumpToPage);
                     jumpToBookmarkPage(jumpToPage);
                 }
+
+                if (pendingInitialSearchQuery != null && !pendingInitialSearchQuery.trim().isEmpty()) {
+                    String query = pendingInitialSearchQuery;
+                    pendingInitialSearchQuery = null;
+                    openSearchPanel(query);
+                } else if (searchPanelVisible && lastSearchQuery != null && !lastSearchQuery.isEmpty()) {
+                    applyHighlightsInWebView(lastSearchQuery, true);
+                }
             }
         });
-		if (tempHtmlFilePath != null) {
-			webView.loadUrl("file://" + tempHtmlFilePath);
-		} else {
-			webView.loadDataWithBaseURL(null, documentHtml, "text/html", "UTF-8", null);
-		}
+        if (tempHtmlFilePath != null) {
+            webView.loadUrl("file://" + tempHtmlFilePath);
+        } else {
+            webView.loadDataWithBaseURL(null, documentHtml, "text/html", "UTF-8", null);
+        }
     }
 
     @Override
@@ -747,8 +858,7 @@ public class FullView extends AppCompatActivity {
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         int id = item.getItemId();
         if (id == R.id.search) {
-            // Показываем диалог поиска
-            showSearchDialog();
+            openSearchPanel(lastSearchQuery);
             return true;
         } else if (id == R.id.add_bookmark) {
             // Получаем текущую позицию прокрутки и небольшой текстовый сниппет из WebView
@@ -813,6 +923,10 @@ public class FullView extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         loadCancelled = true;
+        if (pendingSearchRunnable != null) {
+            searchHandler.removeCallbacks(pendingSearchRunnable);
+            pendingSearchRunnable = null;
+        }
         closeOptionsMenu();
         if (toolbar != null) {
             toolbar.dismissPopupMenus();
@@ -833,27 +947,274 @@ public class FullView extends AppCompatActivity {
         super.onDestroy();
     }
 
-    private void runSearch(String query) {
-        if (query == null || query.trim().isEmpty()) {
-            searchResults.clear();
-            currentResultIndex = -1;
-            displayDocument(); // Показываем документ без выделений
-            updateNavigationButtons();
-            updateTitleWithSearchInfo(-1);
+    private void scheduleSearch(String query) {
+        if (pendingSearchRunnable != null) {
+            searchHandler.removeCallbacks(pendingSearchRunnable);
+        }
+        pendingSearchRunnable = () -> runSearch(query, false);
+        searchHandler.postDelayed(pendingSearchRunnable, SEARCH_DEBOUNCE_MS);
+    }
+
+    private void openSearchPanel(String prefillQuery) {
+        searchPanelVisible = true;
+        if (searchPanel != null) {
+            searchPanel.setVisibility(View.VISIBLE);
+        }
+        if (searchInput != null) {
+            String value = prefillQuery != null ? prefillQuery : "";
+            Editable current = searchInput.getText();
+            if (current == null || !value.contentEquals(current)) {
+                searchInput.setText(value);
+                if (searchInput.getText() != null) {
+                    searchInput.setSelection(searchInput.getText().length());
+                }
+            } else if (!value.isEmpty()) {
+                if (pendingSearchRunnable != null) {
+                    searchHandler.removeCallbacks(pendingSearchRunnable);
+                    pendingSearchRunnable = null;
+                }
+                runSearch(value, true);
+            }
+            searchInput.requestFocus();
+            InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+            if (imm != null) {
+                imm.showSoftInput(searchInput, InputMethodManager.SHOW_IMPLICIT);
+            }
+        }
+        updateNavigationButtons();
+    }
+
+    private void closeSearchPanel(boolean clearHighlights) {
+        searchPanelVisible = false;
+        if (pendingSearchRunnable != null) {
+            searchHandler.removeCallbacks(pendingSearchRunnable);
+            pendingSearchRunnable = null;
+        }
+        if (searchPanel != null) {
+            searchPanel.setVisibility(View.GONE);
+        }
+        setSearchResultsListVisible(false);
+        hideKeyboard();
+        if (clearHighlights) {
+            clearSearchState(true);
+        }
+        restoreDocumentTitle();
+    }
+
+    private void setSearchResultsListVisible(boolean visible) {
+        searchResultsListVisible = visible && !searchResults.isEmpty();
+        if (searchResultsList != null) {
+            searchResultsList.setVisibility(searchResultsListVisible ? View.VISIBLE : View.GONE);
+        }
+        if (btnSearchResultsToggle != null) {
+            btnSearchResultsToggle.setAlpha(!searchResults.isEmpty() ? 1f : 0.35f);
+            btnSearchResultsToggle.setEnabled(!searchResults.isEmpty());
+        }
+    }
+
+    private void hideKeyboard() {
+        View focus = getCurrentFocus();
+        if (focus == null && searchInput != null) {
+            focus = searchInput;
+        }
+        if (focus == null) {
             return;
         }
-        
-        String normalizedQuery = query.trim().replaceAll("\\s+", " ");
+        InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+        if (imm != null) {
+            imm.hideSoftInputFromWindow(focus.getWindowToken(), 0);
+        }
+    }
+
+    private void runSearch(String query, boolean announceEmpty) {
+        String normalizedQuery = DocumentSearchMatcher.normalizeQuery(query);
+        final int generation = searchGeneration.incrementAndGet();
+
+        if (normalizedQuery.isEmpty()) {
+            lastSearchQuery = "";
+            // Не вызываем clearSearchState() — он снова bump'ает generation.
+            searchResults.clear();
+            currentResultIndex = -1;
+            if (searchSnippetAdapter != null) {
+                searchSnippetAdapter.notifyDataSetChanged();
+            }
+            setSearchResultsListVisible(false);
+            updateSearchCountUi();
+            updateNavigationButtons();
+            clearHighlightsInWebView();
+            return;
+        }
+
         lastSearchQuery = normalizedQuery;
-        
-        // Выделяем все результаты в документе и создаем список для навигации
-        highlightAllSearchResults(normalizedQuery);
+        final String contentSnapshot = documentContent != null ? documentContent : "";
+        final boolean caseFlag = caseSensitive;
+        final boolean wholeFlag = wholeWordsOnly;
+
+        android.util.Log.d("DocSearch", "runSearch q=\"" + normalizedQuery
+                + "\" contentLen=" + contentSnapshot.length()
+                + " gen=" + generation);
+
+        if (contentSnapshot.isEmpty()) {
+            applySearchResults(normalizedQuery, Collections.emptyList(), announceEmpty);
+            return;
+        }
+
+        if (docLoadExecutor == null || docLoadExecutor.isShutdown()) {
+            docLoadExecutor = Executors.newSingleThreadExecutor();
+        }
+
+        docLoadExecutor.execute(() -> {
+            final List<DocSearchResult> found;
+            try {
+                found = DocumentSearchMatcher.findMatches(
+                        contentSnapshot, normalizedQuery, caseFlag, wholeFlag);
+            } catch (Throwable t) {
+                android.util.Log.e("DocSearch", "Ошибка поиска", t);
+                searchHandler.post(() -> {
+                    if (generation != searchGeneration.get() || isFinishing()) {
+                        return;
+                    }
+                    applySearchResults(normalizedQuery, Collections.emptyList(), announceEmpty);
+                });
+                return;
+            }
+
+            android.util.Log.d("DocSearch", "found=" + found.size() + " gen=" + generation);
+            searchHandler.post(() -> {
+                if (generation != searchGeneration.get() || isFinishing()) {
+                    android.util.Log.d("DocSearch", "drop stale results gen=" + generation
+                            + " current=" + searchGeneration.get());
+                    return;
+                }
+                applySearchResults(normalizedQuery, found, announceEmpty);
+            });
+        });
+    }
+
+    private void applySearchResults(String normalizedQuery, List<DocSearchResult> found,
+                                    boolean announceEmpty) {
+        searchResults.clear();
+        if (found != null) {
+            searchResults.addAll(found);
+        }
+        currentResultIndex = searchResults.isEmpty() ? -1 : 0;
+
+        if (searchSnippetAdapter != null) {
+            searchSnippetAdapter.notifyDataSetChanged();
+        }
+        if (searchResults.size() >= DocumentSearchMatcher.MAX_RESULTS) {
+            Toast.makeText(this,
+                    getString(R.string.search_too_many_results, DocumentSearchMatcher.MAX_RESULTS),
+                    Toast.LENGTH_SHORT).show();
+        } else if (searchResults.isEmpty()) {
+            setSearchResultsListVisible(false);
+            if (announceEmpty) {
+                Toast.makeText(this, R.string.search_nothing_found, Toast.LENGTH_SHORT).show();
+            }
+            clearHighlightsInWebView();
+        }
+
+        updateSearchCountUi();
+        updateNavigationButtons();
+
+        if (!searchResults.isEmpty()) {
+            applyHighlightsInWebView(normalizedQuery, true);
+        }
+    }
+
+    private void clearSearchState(boolean clearDomHighlights) {
+        searchGeneration.incrementAndGet();
+        searchResults.clear();
+        currentResultIndex = -1;
+        lastSearchQuery = "";
+        if (searchSnippetAdapter != null) {
+            searchSnippetAdapter.notifyDataSetChanged();
+        }
+        setSearchResultsListVisible(false);
+        updateSearchCountUi();
+        updateNavigationButtons();
+        if (clearDomHighlights) {
+            clearHighlightsInWebView();
+        }
+    }
+
+    private void ensureSearchApi(Runnable afterReady) {
+        if (webView == null || !documentPageReady) {
+            android.util.Log.w("DocSearch", "ensureSearchApi skipped ready=" + documentPageReady);
+            return;
+        }
+        if (searchApiInjected) {
+            afterReady.run();
+            return;
+        }
+        // Важно: скрипт должен возвращать примитив (true), не объект с функциями
+        webView.evaluateJavascript(DocumentSearchMatcher.highlightApiJavaScript(), value -> {
+            android.util.Log.d("DocSearch", "search api inject result=" + value);
+            searchApiInjected = true;
+            if (!isFinishing()) {
+                afterReady.run();
+            }
+        });
+    }
+
+    private void applyHighlightsInWebView(String query, boolean activateFirst) {
+        if (webView == null || !documentPageReady) {
+            return;
+        }
+        final String normalizedQuery = DocumentSearchMatcher.normalizeQuery(query);
+        final boolean caseFlag = caseSensitive;
+        final boolean wholeFlag = wholeWordsOnly;
+        ensureSearchApi(() -> {
+            if (webView == null || isFinishing()) {
+                return;
+            }
+            // Передаём обычную строку, не regex
+            String script = "(function(){"
+                    + "try{"
+                    + "if(!window.__paperkaSearch){return -1;}"
+                    + "return window.__paperkaSearch.highlight("
+                    + org.json.JSONObject.quote(normalizedQuery) + ","
+                    + caseFlag + ","
+                    + DocumentSearchMatcher.MAX_DOM_HIGHLIGHTS + ","
+                    + wholeFlag + ");"
+                    + "}catch(e){return -2;}"
+                    + "})()";
+            webView.evaluateJavascript(script, value -> {
+                android.util.Log.d("DocSearch", "highlight result=" + value);
+                if (isFinishing()) {
+                    return;
+                }
+                // Если API пропал после перезагрузки страницы — переинъектим один раз
+                if ("-1".equals(value) || "null".equals(value)) {
+                    searchApiInjected = false;
+                }
+                if (activateFirst && !searchResults.isEmpty()) {
+                    currentResultIndex = 0;
+                    navigateToResult(0);
+                } else {
+                    updateSearchCountUi();
+                    updateNavigationButtons();
+                }
+            });
+        });
+    }
+
+    private void clearHighlightsInWebView() {
+        if (webView == null || !documentPageReady) {
+            return;
+        }
+        if (!searchApiInjected) {
+            return;
+        }
+        webView.evaluateJavascript(
+                "(function(){try{if(window.__paperkaSearch){window.__paperkaSearch.clear();}return true;}catch(e){return false;}})()",
+                null);
     }
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         // Обработка клавиш для навигации по результатам поиска
-        if (!searchResults.isEmpty()) {
+        if (searchPanelVisible && !searchResults.isEmpty()) {
             switch (keyCode) {
                 case KeyEvent.KEYCODE_DPAD_LEFT:
                 case KeyEvent.KEYCODE_PAGE_UP:
@@ -868,39 +1229,32 @@ public class FullView extends AppCompatActivity {
         return super.onKeyDown(keyCode, event);
     }
 
-
-    // Методы для навигации по результатам поиска
     private void updateNavigationButtons() {
-        if (searchNavigationLayout == null || btnSearchPrev == null || btnSearchNext == null) {
+        if (btnSearchPrev == null || btnSearchNext == null) {
             return;
         }
-        
+
         boolean hasResults = !searchResults.isEmpty();
-        boolean canGoPrev = hasResults && currentResultIndex > 0;
-        boolean canGoNext = hasResults && currentResultIndex < searchResults.size() - 1;
-        
-        // Показываем/скрываем панель навигации
-        searchNavigationLayout.setVisibility(hasResults ? View.VISIBLE : View.GONE);
-        
-        // Активируем/деактивируем кнопки
-        btnSearchPrev.setEnabled(canGoPrev);
-        btnSearchNext.setEnabled(canGoNext);
-        
-        // Изменяем прозрачность для визуального отображения состояния
-        btnSearchPrev.setAlpha(canGoPrev ? 1.0f : 0.3f);
-        btnSearchNext.setAlpha(canGoNext ? 1.0f : 0.3f);
+        btnSearchPrev.setEnabled(hasResults);
+        btnSearchNext.setEnabled(hasResults);
+        btnSearchPrev.setAlpha(hasResults ? 1.0f : 0.35f);
+        btnSearchNext.setAlpha(hasResults ? 1.0f : 0.35f);
+        if (btnSearchResultsToggle != null) {
+            btnSearchResultsToggle.setEnabled(hasResults);
+            btnSearchResultsToggle.setAlpha(hasResults ? 1f : 0.35f);
+        }
     }
 
     private void navigateToPreviousResult() {
         if (searchResults.isEmpty()) {
             return;
         }
-        
         if (currentResultIndex <= 0) {
-            return;
+            currentResultIndex = searchResults.size() - 1;
+            Toast.makeText(this, R.string.search_wrapped_to_end, Toast.LENGTH_SHORT).show();
+        } else {
+            currentResultIndex--;
         }
-        
-        currentResultIndex--;
         navigateToResult(currentResultIndex);
     }
 
@@ -908,249 +1262,106 @@ public class FullView extends AppCompatActivity {
         if (searchResults.isEmpty()) {
             return;
         }
-        
         if (currentResultIndex >= searchResults.size() - 1) {
-            return;
+            currentResultIndex = 0;
+            Toast.makeText(this, R.string.search_wrapped_to_start, Toast.LENGTH_SHORT).show();
+        } else {
+            currentResultIndex++;
         }
-        
-        currentResultIndex++;
         navigateToResult(currentResultIndex);
     }
 
     private void navigateToResult(int index) {
-        if (index < 0 || index >= searchResults.size()) {
+        if (index < 0 || index >= searchResults.size() || webView == null) {
             return;
         }
-        
-        DocSearchResult result = searchResults.get(index);
-        
-        // Устанавливаем активный класс на текущий результат
-        setActiveResult(index);
-        
-        // Автоматически прокручиваем к найденному результату
-        scrollToSearchResult(result);
-        
-        // Обновляем заголовок
-        updateTitleWithSearchInfo(index);
-        
-        // Обновляем состояние кнопок навигации
+        currentResultIndex = index;
+        updateSearchCountUi();
         updateNavigationButtons();
+        if (searchSnippetAdapter != null) {
+            searchSnippetAdapter.notifyDataSetChanged();
+        }
+
+        final int charPos = searchResults.get(index).getPosition();
+        final int contentLen = Math.max(1, documentContent != null ? documentContent.length() : 1);
+        ensureSearchApi(() -> {
+            if (webView == null || isFinishing()) {
+                return;
+            }
+            webView.evaluateJavascript(
+                    "(function(){try{"
+                            + "if(window.__paperkaSearch&&window.__paperkaSearch.activate(" + index + ")){return true;}"
+                            + "var h=document.body?document.body.scrollHeight:0;"
+                            + "var wh=window.innerHeight||1;"
+                            + "var p=" + charPos + "/" + contentLen + ";"
+                            + "window.scrollTo(0,Math.max(0,(h-wh)*p));"
+                            + "return false;"
+                            + "}catch(e){return false;}})()",
+                    null);
+        });
     }
 
-    private void highlightAllSearchResults(String searchText) {
-        // Проверяем валидность поискового запроса
-        if (searchText == null || searchText.trim().isEmpty()) {
-            displayDocument(); // Показываем документ без выделений
-            searchResults.clear();
+    private void updateSearchCountUi() {
+        if (searchCountText == null) {
             return;
         }
-        
-        // Выделяем все найденные результаты в документе одновременно
-        String content = documentContent;
-        
-        // Экранируем специальные символы для регулярных выражений
-        String escapedSearchText = searchText.replaceAll("([\\[\\](){}.*+?^$|\\\\])", "\\\\$1");
-        
-        // Создаем регулярное выражение для поиска
-        String regex;
-        if (wholeWordsOnly) {
-            regex = "\\b" + escapedSearchText + "\\b";
-        } else {
-            regex = escapedSearchText;
+        if (lastSearchQuery == null || lastSearchQuery.isEmpty()) {
+            searchCountText.setVisibility(View.GONE);
+            restoreDocumentTitle();
+            return;
         }
-        
-        try {
-            // Применяем поиск с учетом регистра
-            java.util.regex.Pattern pattern;
-            if (caseSensitive) {
-                pattern = java.util.regex.Pattern.compile(regex);
-            } else {
-                pattern = java.util.regex.Pattern.compile(regex, java.util.regex.Pattern.CASE_INSENSITIVE);
-            }
-            
-            // Создаем список результатов поиска
-            searchResults.clear();
-            java.util.regex.Matcher matcher = pattern.matcher(content);
-            int resultIndex = 0;
-            
-            while (matcher.find()) {
-                // Вычисляем примерную страницу для каждого результата
-                int charPosition = matcher.start();
-                int estimatedPage = Math.max(1, (int) Math.ceil((double) charPosition / content.length() * 10));
-                
-                DocSearchResult result = new DocSearchResult(
-                    resultIndex,
-                    matcher.group(),
-                    charPosition,
-                    estimatedPage
-                );
-                searchResults.add(result);
-                resultIndex++;
-            }
-            
-            // Заменяем все найденные вхождения на выделенные
-            String highlightedContent = pattern.matcher(content).replaceAll(
-                "<span class='highlight'>$0</span>");
-            
-            // Преобразуем в HTML с правильным экранированием
-            String highlightedHtml = convertToHtmlWithHighlight(highlightedContent);
-            
-            webView.loadDataWithBaseURL(null, highlightedHtml, "text/html", "UTF-8", null);
-            
-            // Обновляем состояние навигации
-            if (!searchResults.isEmpty()) {
-                currentResultIndex = 0; // Устанавливаем на первый результат
-                updateTitleWithSearchInfo(0);
-                
-                // Автоматически прокручиваем к первому результату и устанавливаем активный класс
-                webView.postDelayed(() -> {
-                    setActiveResult(0);
-                    scrollToSearchResult(searchResults.get(0));
-                }, 500);
-            } else {
-                currentResultIndex = -1;
-                updateTitleWithSearchInfo(-1);
-                // Если ничего не найдено, показываем toast
-                Toast.makeText(this, R.string.search_nothing_found, Toast.LENGTH_SHORT).show();
-            }
-            updateNavigationButtons();
-            
-        } catch (Exception e) {
-            // В случае ошибки показываем документ без выделений
-            displayDocument();
-            searchResults.clear();
-        }
-    }
-
-    private void highlightSearchResult(DocSearchResult result) {
-        // Этот метод теперь просто вызывает highlightAllSearchResults
-        highlightAllSearchResults(lastSearchQuery);
-    }
-
-    private void updateTitleWithSearchInfo(int currentIndex) {
+        searchCountText.setVisibility(View.VISIBLE);
         if (searchResults.isEmpty()) {
-            // Возвращаем обычный заголовок
-            String displayName = (docTitle != null && !docTitle.isEmpty()) ? docTitle : fileName;
-            if (getSupportActionBar() != null) {
-                getSupportActionBar().setTitle(displayName);
-            }
+            searchCountText.setText(R.string.search_count_zero);
+            restoreDocumentTitle();
         } else {
-            // Показываем информацию о поиске в заголовке
-            String searchInfo = String.format("Поиск: %d/%d", 
-                    currentIndex + 1, searchResults.size());
+            int shown = Math.max(1, currentResultIndex + 1);
+            searchCountText.setText(getString(R.string.search_count_format, shown, searchResults.size()));
             if (getSupportActionBar() != null) {
-                getSupportActionBar().setTitle(searchInfo);
+                getSupportActionBar().setTitle(
+                        getString(R.string.search_count_format, shown, searchResults.size()));
             }
         }
     }
 
+    private void restoreDocumentTitle() {
+        String displayName = (docTitle != null && !docTitle.isEmpty()) ? docTitle : fileName;
+        if (getSupportActionBar() != null && displayName != null) {
+            getSupportActionBar().setTitle(displayName);
+        }
+    }
 
-    private void scrollToSearchResult(DocSearchResult result) {
-        // Проверяем, что WebView инициализирован
-        if (webView == null) {
-            android.util.Log.e("PageIndicator", "WebView не инициализирован в scrollToSearchResult!");
-            return;
+    private final class SearchSnippetAdapter extends BaseAdapter {
+        @Override
+        public int getCount() {
+            return searchResults.size();
         }
-        
-        // Прокручиваем к найденному результату
-        webView.post(() -> {
-            // Используем JavaScript для прокрутки к элементу с задержкой
-            String script = "setTimeout(function() {" +
-                    "var elements = document.querySelectorAll('.highlight');" +
-                    "console.log('Found ' + elements.length + ' highlighted elements');" +
-                    "if (elements.length > 0 && elements.length > " + result.getIndex() + ") {" +
-                    "var targetElement = elements[" + result.getIndex() + "];" +
-                    "console.log('Scrolling to element ' + " + result.getIndex() + ");" +
-                    "if (targetElement) {" +
-                    "// Прокручиваем к элементу с фиксированным отступом от верха" +
-                    "var elementRect = targetElement.getBoundingClientRect();" +
-                    "var windowHeight = window.innerHeight;" +
-                    "var topOffset = 600; // Фиксированный отступ от верха экрана" +
-                    "var targetScrollTop = window.pageYOffset + elementRect.top - topOffset;" +
-                    "// Проверяем границы документа" +
-                    "var documentHeight = document.body.scrollHeight;" +
-                    "var maxScrollTop = documentHeight - windowHeight;" +
-                    "if (targetScrollTop < 0) targetScrollTop = 0;" +
-                    "if (targetScrollTop > maxScrollTop) targetScrollTop = maxScrollTop;" +
-                    "window.scrollTo({top: targetScrollTop, behavior: 'smooth'});" +
-                    "// Обновляем позицию флажка после прокрутки" +
-                    "setTimeout(function() {" +
-                    "var scrollTop = window.pageYOffset || document.documentElement.scrollTop;" +
-                    "var windowHeight = window.innerHeight;" +
-                    "var documentHeight = document.body.scrollHeight;" +
-                    "var scrollPercent = scrollTop / (documentHeight - windowHeight);" +
-                    "if (scrollPercent < 0) scrollPercent = 0;" +
-                    "if (scrollPercent > 1) scrollPercent = 1;" +
-                    "if (typeof Android !== 'undefined') {" +
-                    "Android.updatePageIndicatorFromJS(" + result.getPage() + ", 1, scrollPercent);" +
-                    "}" +
-                    "}, 500);" +
-                    "} else {" +
-                    "console.log('Target element not found');" +
-                    "}" +
-                    "} else {" +
-                    "console.log('Not enough elements: ' + elements.length + ', need: " + (result.getIndex() + 1) + "');" +
-                    "}" +
-                    "}, 200);";
-            webView.evaluateJavascript(script, null);
-            
-            // Альтернативный метод прокрутки через позицию символа
-            scrollToPosition(result.getPosition());
-        });
-    }
-    
-    private void scrollToPosition(int charPosition) {
-        // Проверяем, что WebView инициализирован
-        if (webView == null) {
-            android.util.Log.e("PageIndicator", "WebView не инициализирован в scrollToPosition!");
-            return;
+
+        @Override
+        public DocSearchResult getItem(int position) {
+            return searchResults.get(position);
         }
-        
-        // Альтернативный метод прокрутки на основе позиции символа
-        webView.post(() -> {
-            String script = "var documentHeight = document.body.scrollHeight;" +
-                    "var windowHeight = window.innerHeight;" +
-                    "var documentLength = document.body.innerText.length;" +
-                    "var scrollPercent = " + charPosition + " / documentLength;" +
-                    "var targetScrollTop = scrollPercent * (documentHeight - windowHeight);" +
-                    "window.scrollTo({top: targetScrollTop, behavior: 'smooth'});" +
-                    "setTimeout(function() {" +
-                    "var scrollTop = window.pageYOffset || document.documentElement.scrollTop;" +
-                    "var scrollPercent = scrollTop / (documentHeight - windowHeight);" +
-                    "if (scrollPercent < 0) scrollPercent = 0;" +
-                    "if (scrollPercent > 1) scrollPercent = 1;" +
-                    "if (typeof Android !== 'undefined') {" +
-                    "Android.updatePageIndicatorFromJS(1, 1, scrollPercent);" +
-                    "}" +
-                    "}, 500);";
-            webView.evaluateJavascript(script, null);
-        });
-    }
-    
-    private void setActiveResult(int index) {
-        // Проверяем, что WebView инициализирован
-        if (webView == null) {
-            android.util.Log.e("PageIndicator", "WebView не инициализирован в setActiveResult!");
-            return;
+
+        @Override
+        public long getItemId(int position) {
+            return position;
         }
-        
-        // Устанавливаем активный класс на конкретный результат
-        webView.post(() -> {
-            String script = "setTimeout(function() {" +
-                    "var allElements = document.querySelectorAll('.highlight');" +
-                    "console.log('setActiveResult: Found ' + allElements.length + ' highlight elements, setting active to index ' + " + index + ");" +
-                    "for (var i = 0; i < allElements.length; i++) {" +
-                    "allElements[i].classList.remove('active');" +
-                    "}" +
-                    "if (allElements.length > " + index + ") {" +
-                    "allElements[" + index + "].classList.add('active');" +
-                    "console.log('setActiveResult: Added active class to element ' + " + index + ");" +
-                    "} else {" +
-                    "console.log('setActiveResult: Element index ' + " + index + " + ', total elements: ' + allElements.length);" +
-                    "}" +
-                    "}, 50);";
-            webView.evaluateJavascript(script, null);
-        });
+
+        @Override
+        public View getView(int position, View convertView, ViewGroup parent) {
+            View view = convertView;
+            if (view == null) {
+                view = LayoutInflater.from(parent.getContext())
+                        .inflate(R.layout.item_search_snippet, parent, false);
+            }
+            DocSearchResult item = getItem(position);
+            TextView indexView = view.findViewById(R.id.snippetIndex);
+            TextView textView = view.findViewById(R.id.snippetText);
+            indexView.setText(getString(R.string.search_snippet_index, position + 1));
+            textView.setText(item.getSnippet());
+            view.setBackgroundColor(position == currentResultIndex ? 0x22309F6B : 0x00000000);
+            return view;
+        }
     }
     
     private void jumpToBookmarkPage(int pageIndex) {
@@ -1385,55 +1596,5 @@ public class FullView extends AppCompatActivity {
         if (webView != null) {
             webView.setVisibility(View.VISIBLE);
         }
-    }
-    
-    // Диалог поиска
-    private void showSearchDialog() {
-        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
-        builder.setTitle("Поиск в документе");
-        
-        // Создаем EditText для ввода поискового запроса
-        final android.widget.EditText input = new android.widget.EditText(this);
-        input.setHint("Введите текст для поиска");
-        input.setSingleLine(true);
-        input.setText(lastSearchQuery); // Показываем последний поисковый запрос
-        
-        // Устанавливаем размеры EditText
-        android.widget.LinearLayout.LayoutParams params = new android.widget.LinearLayout.LayoutParams(
-                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
-                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
-        );
-        params.setMargins(50, 20, 50, 20);
-        input.setLayoutParams(params);
-        
-        builder.setView(input);
-        
-        builder.setPositiveButton("Поиск", (dialog, which) -> {
-            String query = input.getText().toString().trim();
-            if (!query.isEmpty()) {
-                runSearch(query);
-            }
-        });
-        
-        builder.setNegativeButton("Отмена", (dialog, which) -> dialog.cancel());
-        
-        // Кнопка "Очистить"
-        builder.setNeutralButton("Очистить", (dialog, which) -> {
-            // Очищаем результаты поиска
-            searchResults.clear();
-            currentResultIndex = -1;
-            lastSearchQuery = "";
-            updateTitleWithSearchInfo(-1);
-            updateNavigationButtons();
-            // Показываем документ без выделений
-            displayDocument();
-        });
-        
-        android.app.AlertDialog dialog = builder.create();
-        dialog.show();
-        
-        // Фокус на поле ввода
-        input.requestFocus();
-        input.selectAll();
     }
 }

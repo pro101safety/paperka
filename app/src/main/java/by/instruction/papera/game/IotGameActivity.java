@@ -11,6 +11,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import java.util.List;
 
+import by.instruction.papera.EdgeToEdgeHelper;
 import by.instruction.papera.R;
 import by.instruction.papera.data.RecordsStore;
 
@@ -32,11 +33,15 @@ public class IotGameActivity extends AppCompatActivity implements IotGameView.Ga
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        EdgeToEdgeHelper.enable(this);
         setContentView(R.layout.activity_iot_game);
 
         gameView = findViewById(R.id.iotGameView);
         timerText = findViewById(R.id.gameTimer);
         helmetInfo = findViewById(R.id.helmetInfo);
+        EdgeToEdgeHelper.applyTopMarginInsets(timerText);
+        EdgeToEdgeHelper.applySystemBarsPadding(findViewById(R.id.startPanel));
+        EdgeToEdgeHelper.applySystemBarsPadding(findViewById(R.id.resultPanel));
         resultPanel = findViewById(R.id.resultPanel);
         startPanel = findViewById(R.id.startPanel);
         resultTime = findViewById(R.id.resultTime);

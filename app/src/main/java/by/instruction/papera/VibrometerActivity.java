@@ -10,7 +10,6 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.view.WindowCompat;
 
 import com.google.android.material.appbar.MaterialToolbar;
 
@@ -38,10 +37,11 @@ public class VibrometerActivity extends AppCompatActivity implements SensorEvent
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        EdgeToEdgeHelper.enable(this);
         setContentView(R.layout.activity_vibrometer);
-        WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
 
         MaterialToolbar toolbar = findViewById(R.id.toolbar);
+        EdgeToEdgeHelper.applyToolbarScreenInsets(toolbar, findViewById(android.R.id.content));
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);

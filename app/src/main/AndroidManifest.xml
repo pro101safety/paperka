@@ -48,10 +48,6 @@
             android:exported="false"
             android:theme="@style/Theme.Papera" />
         <activity
-            android:name=".ThermometerActivity"
-            android:exported="false"
-            android:theme="@style/Theme.Papera" />
-        <activity
             android:name=".CompassActivity"
             android:exported="false"
             android:theme="@style/Theme.Papera" />
@@ -81,7 +77,7 @@
         <activity
             android:name=".SplashScreen"
             android:exported="true"
-            android:theme="@style/Theme.AppCompat.DayNight.NoActionBar"
+            android:theme="@style/Theme.Papera"
             >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

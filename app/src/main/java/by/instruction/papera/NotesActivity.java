@@ -68,11 +68,11 @@ public class NotesActivity extends AppCompatActivity {
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        EdgeToEdgeHelper.enable(this);
         setContentView(R.layout.activity_notes);
 
-        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
-
         toolbar = findViewById(R.id.toolbar);
+        EdgeToEdgeHelper.applyAppBarInsets(toolbar);
         if (toolbar != null) {
             toolbar.getMenu().clear();
             toolbar.inflateMenu(R.menu.notes_menu);
@@ -90,13 +90,16 @@ public class NotesActivity extends AppCompatActivity {
         initActivityResultLaunchers();
         drawerLayout = findViewById(R.id.drawer_layout);
         navigationView = findViewById(R.id.navigation_view);
+        EdgeToEdgeHelper.applyNavigationViewInsets(navigationView);
         initFolderControls();
 
         FloatingActionButton fab = findViewById(R.id.fab_add_note);
         if (fab != null) {
             fab.setVisibility(View.VISIBLE);
             fab.setOnClickListener(v -> showAddTypeDialog());
+            EdgeToEdgeHelper.applyFabMargins(fab);
         }
+        EdgeToEdgeHelper.applyBottomInsets(findViewById(R.id.recyclerView));
 
         recyclerView = findViewById(R.id.recyclerView);
         if (recyclerView != null) {

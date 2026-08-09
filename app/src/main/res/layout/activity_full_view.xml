@@ -1,60 +1,147 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="match_parent" android:layout_height="match_parent">
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
 
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="?attr/colorSurface"
-        android:fitsSystemWindows="true"
         app:title=""
         app:titleTextAppearance="@style/CustomToolbarTitle" />
 
-    <!-- Кнопки навигации по результатам поиска -->
     <LinearLayout
-        android:id="@+id/searchNavigationLayout"
+        android:id="@+id/searchPanel"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_below="@id/toolbar"
-        android:orientation="horizontal"
-        android:gravity="center"
-        android:padding="8dp"
         android:background="?attr/colorSurface"
+        android:elevation="4dp"
+        android:orientation="vertical"
         android:visibility="gone">
 
-        <ImageButton
-            android:id="@+id/btnSearchPrev"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginEnd="16dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@android:drawable/ic_media_previous"
-            android:contentDescription="Предыдущий результат"
-            android:scaleType="centerInside"
-            android:padding="12dp" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="8dp"
+            android:paddingTop="6dp"
+            android:paddingEnd="4dp"
+            android:paddingBottom="4dp">
 
-        <ImageButton
-            android:id="@+id/btnSearchNext"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@android:drawable/ic_media_next"
-            android:contentDescription="Следующий результат"
-            android:scaleType="centerInside"
-            android:padding="12dp" />
+            <EditText
+                android:id="@+id/searchInput"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_marginEnd="4dp"
+                android:layout_weight="1"
+                android:background="@android:drawable/edit_text"
+                android:hint="@string/search_in_document_hint"
+                android:imeOptions="actionSearch"
+                android:importantForAutofill="no"
+                android:inputType="text"
+                android:maxLines="1"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:singleLine="true"
+                android:textSize="15sp" />
 
+            <TextView
+                android:id="@+id/searchCountText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="2dp"
+                android:minWidth="44dp"
+                android:gravity="center"
+                android:textColor="?android:attr/textColorSecondary"
+                android:textSize="13sp"
+                android:visibility="gone" />
+
+            <ImageButton
+                android:id="@+id/btnSearchPrev"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/search_previous"
+                android:padding="8dp"
+                android:scaleType="centerInside"
+                android:src="@android:drawable/ic_media_previous" />
+
+            <ImageButton
+                android:id="@+id/btnSearchNext"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/search_next"
+                android:padding="8dp"
+                android:scaleType="centerInside"
+                android:src="@android:drawable/ic_media_next" />
+
+            <ImageButton
+                android:id="@+id/btnSearchResultsToggle"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/search_results_toggle"
+                android:padding="8dp"
+                android:scaleType="centerInside"
+                android:src="@android:drawable/ic_menu_sort_by_size" />
+
+            <ImageButton
+                android:id="@+id/btnSearchClose"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/search_close"
+                android:padding="8dp"
+                android:scaleType="centerInside"
+                android:src="@android:drawable/ic_menu_close_clear_cancel" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingBottom="4dp">
+
+            <com.google.android.material.checkbox.MaterialCheckBox
+                android:id="@+id/checkCaseSensitive"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/search_case_sensitive"
+                android:textSize="13sp" />
+
+            <com.google.android.material.checkbox.MaterialCheckBox
+                android:id="@+id/checkWholeWords"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/search_whole_words"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <ListView
+            android:id="@+id/searchResultsList"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:maxHeight="220dp"
+            android:divider="?android:attr/listDivider"
+            android:dividerHeight="1dp"
+            android:visibility="gone" />
     </LinearLayout>
-
 
     <WebView
         android:id="@+id/webView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_below="@id/searchNavigationLayout"/>
+        android:layout_below="@id/searchPanel" />
 
-    <!-- Прогресс загрузки -->
     <TextView
         android:id="@+id/pageIndicator"
         android:layout_width="wrap_content"
@@ -63,10 +150,10 @@
         android:layout_centerVertical="true"
         android:layout_marginEnd="16dp"
         android:background="#CC000000"
+        android:elevation="8dp"
+        android:padding="12dp"
         android:textColor="#FFFFFFFF"
         android:textSize="16sp"
-        android:padding="12dp"
-        android:elevation="8dp"
         android:visibility="gone" />
 
     <ProgressBar
@@ -74,7 +161,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_centerInParent="true"
-        android:visibility="gone"
-        android:indeterminate="true" />
+        android:indeterminate="true"
+        android:visibility="gone" />
 
 </RelativeLayout>

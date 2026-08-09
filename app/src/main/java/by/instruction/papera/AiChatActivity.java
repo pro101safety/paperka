@@ -10,10 +10,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowCompat;
-import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -46,10 +42,11 @@ public class AiChatActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        EdgeToEdgeHelper.enable(this);
         setContentView(R.layout.activity_ai_chat);
-        WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
 
         MaterialToolbar toolbar = findViewById(R.id.toolbar);
+        EdgeToEdgeHelper.applyAppBarInsets(toolbar);
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
@@ -69,7 +66,7 @@ public class AiChatActivity extends AppCompatActivity {
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         recyclerView.setAdapter(adapter);
         updateModeIndicator(getString(R.string.ai_chat_mode_indexing), 0xFF555555);
-        applyBottomInsets(chatInputContainer);
+        EdgeToEdgeHelper.applyBottomInsets(chatInputContainer);
 
         btnSend.setOnClickListener(v -> submitQuestion());
         inputMessage.setOnEditorActionListener((v, actionId, event) -> {
@@ -326,20 +323,6 @@ public class AiChatActivity extends AppCompatActivity {
     private void refreshChat() {
         adapter.submit(messages);
         recyclerView.post(() -> recyclerView.scrollToPosition(Math.max(0, messages.size() - 1)));
-    }
-
-    private void applyBottomInsets(android.view.View inputContainer) {
-        if (inputContainer == null) {
-            return;
-        }
-        final int baseBottomPadding = inputContainer.getPaddingBottom();
-        ViewCompat.setOnApplyWindowInsetsListener(inputContainer, (v, insets) -> {
-            Insets navInsets = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            int extraBottom = Math.max(0, navInsets.bottom);
-            v.setPadding(v.getPaddingLeft(), v.getPaddingTop(), v.getPaddingRight(), baseBottomPadding + extraBottom);
-            return insets;
-        });
-        ViewCompat.requestApplyInsets(inputContainer);
     }
 
     private void openSourceDocument(AiSource source) {

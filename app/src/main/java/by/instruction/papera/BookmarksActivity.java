@@ -57,12 +57,11 @@ public class BookmarksActivity extends AppCompatActivity {
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        EdgeToEdgeHelper.enable(this);
         setContentView(R.layout.activity_bookmarks);
 
-        // Гарантируем корректное размещение под статус-баром в обеих темах
-        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
-
         MaterialToolbar toolbar = findViewById(R.id.toolbar);
+        EdgeToEdgeHelper.applyToolbarScreenInsets(toolbar, findViewById(R.id.listView));
         if (toolbar != null) {
             // Не используем ActionBar, работаем только через Toolbar-меню, чтобы исключить конфликты в тёмной теме
             toolbar.getMenu().clear();
