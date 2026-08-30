@@ -12,9 +12,9 @@
         android:title="Блокнот ИОТа"/>
 
     <item
-        android:id="@+id/ai_chat"
-        android:icon="@drawable/ic_drawer_chat_24"
-        android:title="ИИ-чат по ОТ"/>
+        android:id="@+id/voice_search"
+        android:icon="@drawable/ic_drawer_mic_24"
+        android:title="Голосовой поиск"/>
 
     <item
         android:id="@+id/luxometer"

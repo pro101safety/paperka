@@ -10,6 +10,13 @@ public final class DocumentSectionRegistry {
     private DocumentSectionRegistry() {
     }
 
+    public static void ensureLoaded() {
+        if (!FILE_TO_SECTION.isEmpty()) {
+            return;
+        }
+        refreshFromChapters(ChapterCatalog.build());
+    }
+
     public static void refreshFromChapters(List<Chapter> chapters) {
         FILE_TO_SECTION.clear();
         if (chapters == null) {

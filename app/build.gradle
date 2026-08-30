@@ -7,8 +7,8 @@ android {
         applicationId "by.instruction.papera"
         minSdk 26
         targetSdk 36
-        versionCode 84
-        versionName "7.0.0"
+        versionCode 85
+        versionName "7.0.1"
 
 // Поддержка страниц памяти 16 КБ
         ndk {
@@ -42,6 +42,12 @@ android {
         buildConfig true
     }
 
+    sourceSets {
+        main {
+            assets.srcDirs += files("$buildDir/generated/voiceSearchAssets")
+        }
+    }
+
     testOptions {
         unitTests {
             includeAndroidResources = true
@@ -62,9 +68,22 @@ def cleanProjectDex = tasks.register("cleanProjectDex", Delete) {
     delete "$buildDir/intermediates/project_dex_archive"
 }
 
+def voiceSearchAssetsDir = file("$buildDir/generated/voiceSearchAssets")
+def buildVoiceSearchIndex = tasks.register("buildVoiceSearchIndex") {
+    group = "build"
+    description = "Builds SQLite FTS index for voice search from catalog and Word assets"
+    dependsOn(":voice-search-index:compileVoiceSearchIndex")
+    inputs.file("src/main/java/by/instruction/papera/ChapterCatalog.java")
+    inputs.dir("src/main/assets")
+    outputs.dir(voiceSearchAssetsDir)
+}
+
 afterEvaluate {
     tasks.matching { it.name.startsWith("mergeProjectDex") }.configureEach {
         dependsOn cleanProjectDex
+    }
+    tasks.matching { it.name == "preBuild" || (it.name.startsWith("merge") && it.name.endsWith("Assets")) }.configureEach {
+        dependsOn buildVoiceSearchIndex
     }
 }
 

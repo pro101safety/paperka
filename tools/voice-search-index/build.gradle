@@ -1,0 +1,34 @@
+apply plugin: 'java'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+dependencies {
+    implementation 'org.xerial:sqlite-jdbc:3.45.1.0'
+    implementation 'org.apache.poi:poi:5.2.3'
+    implementation 'org.apache.poi:poi-scratchpad:5.2.3'
+}
+
+def catalogFile = rootProject.file("app/src/main/java/by/instruction/papera/ChapterCatalog.java")
+def assetsDir = rootProject.file("app/src/main/assets")
+def outDir = rootProject.file("app/build/generated/voiceSearchAssets")
+
+tasks.register("compileVoiceSearchIndex", JavaExec) {
+    group = "build"
+    description = "Builds SQLite FTS index for voice search"
+    dependsOn(tasks.named("classes"))
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass.set("by.instruction.papera.index.SearchIndexCompiler")
+    inputs.file(catalogFile)
+    inputs.dir(assetsDir)
+    outputs.dir(outDir)
+    args catalogFile.absolutePath,
+            assetsDir.absolutePath,
+            new File(outDir, "voice_search.db").absolutePath,
+            new File(outDir, "voice_search.stamp").absolutePath
+    doFirst {
+        outDir.mkdirs()
+    }
+}

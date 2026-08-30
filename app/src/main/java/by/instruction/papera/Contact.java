@@ -18,46 +18,37 @@ public class Contact extends AppCompatActivity {
         View root = ((android.view.ViewGroup) findViewById(android.R.id.content)).getChildAt(0);
         EdgeToEdgeHelper.applySystemBarsPadding(root);
 
-        TextView azbukaLink = findViewById(R.id.azbuka_link);
-        if (azbukaLink != null) {
-            azbukaLink.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    String url = "https://play.google.com/store/apps/details?id=com.instruction.paperka20&hl=ru";
-                    Intent intent = new Intent(Intent.ACTION_VIEW);
-                    intent.setData(Uri.parse(url));
-                    // Пытаемся открыть в Google Play Store
-                    intent.setPackage("com.android.vending");
-                    try {
-                        startActivity(intent);
-                    } catch (android.content.ActivityNotFoundException e) {
-                        // Если Google Play не установлен, открываем в браузере
-                        intent.setPackage(null);
-                        startActivity(intent);
-                    }
-                }
-            });
-        }
+        bindPlayStoreLink(R.id.azbuka_link,
+                "https://play.google.com/store/apps/details?id=com.instruction.paperka20&hl=ru");
+        bindPlayStoreLink(R.id.pro101_link,
+                "https://play.google.com/store/apps/details?id=by.instruction.planer");
+        bindWebLink(R.id.pc_solutions_link,
+                "https://instruction-ot.by/programmnoe-obespechenie/");
+    }
 
-        TextView pro101Link = findViewById(R.id.pro101_link);
-        if (pro101Link != null) {
-            pro101Link.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    String url = "https://play.google.com/store/apps/details?id=by.instruction.planer";
-                    Intent intent = new Intent(Intent.ACTION_VIEW);
-                    intent.setData(Uri.parse(url));
-                    // Пытаемся открыть в Google Play Store
-                    intent.setPackage("com.android.vending");
-                    try {
-                        startActivity(intent);
-                    } catch (android.content.ActivityNotFoundException e) {
-                        // Если Google Play не установлен, открываем в браузере
-                        intent.setPackage(null);
-                        startActivity(intent);
-                    }
-                }
-            });
+    private void bindPlayStoreLink(int viewId, String url) {
+        TextView link = findViewById(viewId);
+        if (link == null) {
+            return;
         }
+        link.setOnClickListener(v -> {
+            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+            intent.setPackage("com.android.vending");
+            try {
+                startActivity(intent);
+            } catch (android.content.ActivityNotFoundException e) {
+                intent.setPackage(null);
+                startActivity(intent);
+            }
+        });
+    }
+
+    private void bindWebLink(int viewId, String url) {
+        TextView link = findViewById(viewId);
+        if (link == null) {
+            return;
+        }
+        link.setOnClickListener(v ->
+                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url))));
     }
 }

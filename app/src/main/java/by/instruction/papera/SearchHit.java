@@ -1,11 +1,11 @@
 package by.instruction.papera;
 
-public class AiSource {
+public class SearchHit {
     private final String documentName;
     private final String snippet;
     private final String fileKey;
 
-    public AiSource(String documentName, String snippet, String fileKey) {
+    public SearchHit(String documentName, String snippet, String fileKey) {
         this.documentName = documentName;
         this.snippet = snippet;
         this.fileKey = fileKey;

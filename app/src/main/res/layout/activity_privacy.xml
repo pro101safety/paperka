@@ -51,16 +51,6 @@
                     android:textColor="?attr/colorOnSurfaceVariant"
                     android:lineSpacingMultiplier="1.2" />
 
-                <TextView
-                    android:id="@+id/text_ai_privacy_body"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:text="@string/ai_chat_privacy_notice"
-                    android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
-                    android:textColor="?attr/colorOnSurfaceVariant"
-                    android:lineSpacingMultiplier="1.2" />
-
             </LinearLayout>
 
         </com.google.android.material.card.MaterialCardView>

@@ -16,3 +16,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "papera"
 include ':app'
+include ':voice-search-index'
+project(':voice-search-index').projectDir = new File(rootDir, 'tools/voice-search-index')

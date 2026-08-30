@@ -16,7 +16,6 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -28,64 +27,27 @@ import java.util.zip.ZipInputStream;
 
 public class LocalDocumentRetriever {
     private static final String TAG = "LocalRetriever";
-    private static final String QUERY_SYNONYMS_ASSET = "ai_query_synonyms.json";
+    private static final String QUERY_SYNONYMS_ASSET = "query_synonyms.json";
     private static final int CHUNK_CHAR_LIMIT = 700;
     private static final int MAX_DOC_TEXT = 25000;
     private static final int MAX_SNIPPET_CHARS = 180;
     private static final int MAX_INDEX_CHUNKS = 2500;
-    private static final Set<String> STOPWORDS = new HashSet<>(Arrays.asList(
-            "и", "в", "во", "на", "по", "для", "с", "со", "к", "ко", "о", "об", "от", "до",
-            "или", "а", "но", "как", "что", "это", "при", "из", "за", "под", "над", "у", "не"
-    ));
-    private static final Map<String, String[]> TOKEN_SYNONYMS = new HashMap<>();
-    private static final Map<String, String[]> QUERY_SYNONYMS = new HashMap<>();
     private static final Object SYNONYMS_LOCK = new Object();
     private static volatile boolean synonymsLoaded = false;
-
-    static {
-        loadDefaultSynonyms();
-    }
-
-    private static void loadDefaultSynonyms() {
-        TOKEN_SYNONYMS.clear();
-        QUERY_SYNONYMS.clear();
-        STOPWORDS.clear();
-        STOPWORDS.addAll(Arrays.asList(
-                "и", "в", "во", "на", "по", "для", "с", "со", "к", "ко", "о", "об", "от", "до",
-                "или", "а", "но", "как", "что", "это", "при", "из", "за", "под", "над", "у", "не"
-        ));
-
-        TOKEN_SYNONYMS.put("сиз", new String[]{"средства", "индивидуальной", "защиты"});
-        TOKEN_SYNONYMS.put("средства", new String[]{"сиз"});
-        TOKEN_SYNONYMS.put("пз", new String[]{"проверка", "знаний"});
-        TOKEN_SYNONYMS.put("лпа", new String[]{"локальный", "правовой", "акт"});
-        TOKEN_SYNONYMS.put("суот", new String[]{"система", "управления", "охраной", "труда"});
-        TOKEN_SYNONYMS.put("нс", new String[]{"несчастный", "случай"});
-        TOKEN_SYNONYMS.put("медосмотр", new String[]{"медицинский", "осмотр"});
-        TOKEN_SYNONYMS.put("от", new String[]{"охрана", "труда"});
-        TOKEN_SYNONYMS.put("инструктаж", new String[]{"обучение"});
-        TOKEN_SYNONYMS.put("стажировка", new String[]{"обучение"});
-        TOKEN_SYNONYMS.put("пожарка", new String[]{"пожарная", "безопасность"});
-        TOKEN_SYNONYMS.put("радиация", new String[]{"радиационная", "безопасность"});
-        TOKEN_SYNONYMS.put("работодатель", new String[]{"наниматель"});
-        TOKEN_SYNONYMS.put("наниматель", new String[]{"работодатель"});
-
-        QUERY_SYNONYMS.put("несчастный случай", new String[]{"нс", "расследование", "травма"});
-        QUERY_SYNONYMS.put("проверка знаний", new String[]{"пз", "обучение", "инструктаж"});
-        QUERY_SYNONYMS.put("средства индивидуальной защиты", new String[]{"сиз"});
-        QUERY_SYNONYMS.put("система управления охраной труда", new String[]{"суот"});
-        QUERY_SYNONYMS.put("медосмотр", new String[]{"медицинский осмотр", "обязательный медосмотр"});
-    }
 
     private static final Object INDEX_LOCK = new Object();
     private static final List<DocumentChunk> SHARED_INDEX = new ArrayList<>();
     private static final Map<String, Integer> TERM_DF = new HashMap<>();
+    private static final LocalDocumentQueryEngine SHARED_ENGINE = new LocalDocumentQueryEngine();
     private static volatile boolean indexed = false;
 
     private final Context appContext;
+    private final LocalDocumentQueryEngine engine = SHARED_ENGINE;
+    private final VoiceSearchIndex voiceSearchIndex;
 
     public LocalDocumentRetriever(Context context) {
         this.appContext = context.getApplicationContext();
+        this.voiceSearchIndex = new VoiceSearchIndex(this.appContext, engine);
         ensureSynonymsLoaded();
     }
 
@@ -116,48 +78,40 @@ public class LocalDocumentRetriever {
             if (indexed) {
                 return;
             }
+            DocumentSectionRegistry.ensureLoaded();
             buildIndex();
             indexed = true;
         }
     }
 
     public List<DocumentChunk> retrieveTopChunks(String query, int limit) {
+        if (query == null || query.trim().isEmpty()) {
+            return Collections.emptyList();
+        }
+        DocumentSectionRegistry.ensureLoaded();
+        if (voiceSearchIndex.isReady()) {
+            List<DocumentChunk> candidates = voiceSearchIndex.loadCandidates(query);
+            Log.d(TAG, "Голосовой поиск по FTS, кандидатов: " + candidates.size());
+            return engine.mergeCatalogAndBody(
+                    query, ChapterCatalog.build(), candidates, engine.buildDf(candidates), limit);
+        }
         try {
             ensureIndexBuilt();
         } catch (Throwable t) {
             Log.e(TAG, "Индекс не построен из-за ошибки", t);
-            return Collections.emptyList();
+            return engine.mergeCatalogAndBody(
+                    query, ChapterCatalog.build(), Collections.emptyList(),
+                    Collections.emptyMap(), limit);
         }
-        if (query == null || query.trim().isEmpty()) {
-            return Collections.emptyList();
-        }
-        String queryPhrase = normalizeText(query).replaceAll("\\s+", " ").trim();
-        Set<String> tokens = expandQueryTokens(query, tokenize(query));
-        if (tokens.isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        List<ScoredChunk> scored = new ArrayList<>();
-        for (DocumentChunk chunk : SHARED_INDEX) {
-            int score = scoreChunk(tokens, queryPhrase, chunk);
-            if (score > 0) {
-                scored.add(new ScoredChunk(chunk, score));
-            }
-        }
-        scored.sort(Comparator.comparingInt((ScoredChunk c) -> c.score).reversed());
-
-        List<DocumentChunk> result = new ArrayList<>();
-        for (ScoredChunk item : scored) {
-            if (result.size() >= limit) {
-                break;
-            }
-            result.add(item.chunk);
-        }
-        return result;
+        return engine.mergeCatalogAndBody(query, ChapterCatalog.build(), SHARED_INDEX, TERM_DF, limit);
     }
 
-    public List<AiSource> toSources(List<DocumentChunk> chunks, int maxCount, String query) {
-        List<AiSource> sources = new ArrayList<>();
+    String pickHighlightQuery(String query) {
+        return engine.pickHighlightQuery(query);
+    }
+
+    public List<SearchHit> toSources(List<DocumentChunk> chunks, int maxCount, String query) {
+        List<SearchHit> sources = new ArrayList<>();
         if (chunks == null) {
             return sources;
         }
@@ -165,8 +119,8 @@ public class LocalDocumentRetriever {
             if (sources.size() >= maxCount) {
                 break;
             }
-            String snippet = createRelevantSnippet(chunk.text, query, MAX_SNIPPET_CHARS);
-            sources.add(new AiSource(chunk.documentName, snippet.replaceAll("\\s+", " ").trim(), chunk.fileKey));
+            String snippet = engine.createRelevantSnippet(chunk.text, query, MAX_SNIPPET_CHARS);
+            sources.add(new SearchHit(chunk.documentName, snippet.replaceAll("\\s+", " ").trim(), chunk.fileKey));
         }
         return sources;
     }
@@ -322,13 +276,15 @@ public class LocalDocumentRetriever {
                 continue;
             }
             if (current.length() + line.length() + 1 > CHUNK_CHAR_LIMIT && current.length() > 0) {
-                SHARED_INDEX.add(new DocumentChunk(displayName, fileKey, chunkOrder++, current.toString().trim()));
+                SHARED_INDEX.add(new DocumentChunk(
+                        displayName, fileKey, chunkOrder++, current.toString().trim(), engine));
                 current.setLength(0);
             }
             current.append(line).append('\n');
         }
         if (current.length() > 0) {
-            SHARED_INDEX.add(new DocumentChunk(displayName, fileKey, chunkOrder, current.toString().trim()));
+            SHARED_INDEX.add(new DocumentChunk(
+                    displayName, fileKey, chunkOrder, current.toString().trim(), engine));
         }
     }
 
@@ -346,165 +302,7 @@ public class LocalDocumentRetriever {
 
     private void rebuildDfStats() {
         TERM_DF.clear();
-        for (DocumentChunk chunk : SHARED_INDEX) {
-            Set<String> unique = tokenize(chunk.text);
-            for (String token : unique) {
-                TERM_DF.put(token, TERM_DF.getOrDefault(token, 0) + 1);
-            }
-        }
-    }
-
-    private Set<String> tokenize(String value) {
-        String[] parts = normalizeText(value).split("[^\\p{L}\\p{Nd}]+");
-        Set<String> tokens = new HashSet<>();
-        for (String part : parts) {
-            if (part.length() < 2 || STOPWORDS.contains(part)) {
-                continue;
-            }
-            tokens.add(part);
-            String stem = stemToken(part);
-            if (!stem.equals(part) && stem.length() >= 3) {
-                tokens.add(stem);
-            }
-        }
-        return tokens;
-    }
-
-    private int scoreChunk(Set<String> queryTokens, String queryPhrase, DocumentChunk chunk) {
-        String lowerChunk = normalizeText(chunk.text);
-        String lowerTitle = normalizeText(chunk.documentName);
-        int score = 0;
-        int matched = 0;
-
-        if (queryPhrase.length() >= 4 && lowerChunk.contains(queryPhrase)) {
-            score += 80;
-        }
-
-        for (String token : queryTokens) {
-            int occ = countOccurrences(lowerChunk, token);
-            if (occ > 0) {
-                matched++;
-                int df = TERM_DF.getOrDefault(token, SHARED_INDEX.size());
-                int rarityBoost = Math.max(1, (SHARED_INDEX.size() + 5) / (df + 5));
-                score += Math.min(occ, 5) * (4 + Math.min(token.length(), 10)) * rarityBoost;
-                int firstIdx = lowerChunk.indexOf(token);
-                if (firstIdx >= 0) {
-                    score += Math.max(0, 20 - firstIdx / 80);
-                }
-            }
-            if (lowerTitle.contains(token)) {
-                score += 30;
-            }
-        }
-        if (!queryTokens.isEmpty() && matched == queryTokens.size()) {
-            score += 40;
-        } else {
-            score += matched * 6;
-        }
-        return score;
-    }
-
-    private int countOccurrences(String text, String token) {
-        int from = 0;
-        int count = 0;
-        while (true) {
-            int idx = text.indexOf(token, from);
-            if (idx < 0) {
-                break;
-            }
-            count++;
-            from = idx + token.length();
-        }
-        return count;
-    }
-
-    private String createRelevantSnippet(String text, String query, int maxChars) {
-        if (text == null || text.trim().isEmpty()) {
-            return "";
-        }
-        String normalizedText = normalizeText(text);
-        Set<String> tokens = expandQueryTokens(query == null ? "" : query, tokenize(query == null ? "" : query));
-        int bestIdx = -1;
-        for (String token : tokens) {
-            int idx = normalizedText.indexOf(token);
-            if (idx >= 0 && (bestIdx < 0 || idx < bestIdx)) {
-                bestIdx = idx;
-            }
-        }
-        if (bestIdx < 0) {
-            String fallback = text.replaceAll("\\s+", " ").trim();
-            return fallback.length() > maxChars ? fallback.substring(0, maxChars) + "..." : fallback;
-        }
-        int start = Math.max(0, bestIdx - maxChars / 3);
-        int end = Math.min(text.length(), start + maxChars);
-        if (end - start < maxChars && start > 0) {
-            start = Math.max(0, end - maxChars);
-        }
-        String snippet = text.substring(start, end).replaceAll("\\s+", " ").trim();
-        if (start > 0) {
-            snippet = "... " + snippet;
-        }
-        if (end < text.length()) {
-            snippet = snippet + " ...";
-        }
-        return snippet;
-    }
-
-    private String normalizeText(String value) {
-        if (value == null) {
-            return "";
-        }
-        return value.toLowerCase(Locale.ROOT).replace('ё', 'е');
-    }
-
-    private Set<String> expandQueryTokens(String query, Set<String> baseTokens) {
-        Set<String> expanded = new HashSet<>(baseTokens);
-        String normalizedQuery = normalizeText(query).replaceAll("\\s+", " ").trim();
-
-        for (String token : new HashSet<>(baseTokens)) {
-            String[] synonyms = TOKEN_SYNONYMS.get(token);
-            if (synonyms == null) {
-                continue;
-            }
-            for (String synonym : synonyms) {
-                expanded.addAll(tokenize(synonym));
-            }
-        }
-
-        for (Map.Entry<String, String[]> entry : QUERY_SYNONYMS.entrySet()) {
-            if (!normalizedQuery.contains(entry.getKey())) {
-                continue;
-            }
-            for (String synonymPhrase : entry.getValue()) {
-                expanded.addAll(tokenize(synonymPhrase));
-            }
-        }
-
-        if (normalizedQuery.contains("нс") || normalizedQuery.contains("несчаст")) {
-            expanded.addAll(tokenize("расследование несчастных случаев травма производственная"));
-        }
-        if (normalizedQuery.contains("сиз")) {
-            expanded.addAll(tokenize("индивидуальная защита средства защиты"));
-        }
-        if (normalizedQuery.contains("суот")) {
-            expanded.addAll(tokenize("система управления охраной труда мероприятия"));
-        }
-        return expanded;
-    }
-
-    private String stemToken(String token) {
-        String t = token;
-        String[] suffixes = {
-                "иями", "ями", "ами", "иями", "ого", "ему", "ому", "ыми", "ими", "ия", "ие", "ий",
-                "ая", "ое", "ые", "ий", "ый", "ой", "ам", "ям", "ах", "ях", "ов", "ев", "ом", "ем",
-                "а", "я", "ы", "и", "е", "у", "ю", "о"
-        };
-        for (String s : suffixes) {
-            if (t.endsWith(s) && t.length() - s.length() >= 3) {
-                return t.substring(0, t.length() - s.length());
-            }
-        }
-        return t;
+        TERM_DF.putAll(engine.buildDf(SHARED_INDEX));
     }
 
     private void loadSynonymsFromAsset(AssetManager assets) throws Exception {
@@ -513,55 +311,41 @@ public class LocalDocumentRetriever {
             return;
         }
         JSONObject root = new JSONObject(jsonText);
-
-        JSONObject tokenSynonymsObj = root.optJSONObject("tokenSynonyms");
-        if (tokenSynonymsObj != null) {
-            TOKEN_SYNONYMS.clear();
-            JSONArray names = tokenSynonymsObj.names();
-            if (names != null) {
-                for (int i = 0; i < names.length(); i++) {
-                    String key = normalizeText(names.optString(i, ""));
-                    if (key.isEmpty()) {
-                        continue;
-                    }
-                    JSONArray arr = tokenSynonymsObj.optJSONArray(key);
-                    String[] values = jsonArrayToStringArray(arr);
-                    if (values.length > 0) {
-                        TOKEN_SYNONYMS.put(key, values);
-                    }
-                }
-            }
-        }
-
-        JSONObject querySynonymsObj = root.optJSONObject("querySynonyms");
-        if (querySynonymsObj != null) {
-            QUERY_SYNONYMS.clear();
-            JSONArray names = querySynonymsObj.names();
-            if (names != null) {
-                for (int i = 0; i < names.length(); i++) {
-                    String key = normalizeText(names.optString(i, ""));
-                    if (key.isEmpty()) {
-                        continue;
-                    }
-                    JSONArray arr = querySynonymsObj.optJSONArray(key);
-                    String[] values = jsonArrayToStringArray(arr);
-                    if (values.length > 0) {
-                        QUERY_SYNONYMS.put(key, values);
-                    }
-                }
-            }
-        }
-
+        Map<String, String[]> tokenMap = readSynonymObject(root.optJSONObject("tokenSynonyms"));
+        Map<String, String[]> queryMap = readSynonymObject(root.optJSONObject("querySynonyms"));
+        Set<String> stopwordSet = new HashSet<>();
         JSONArray stopwords = root.optJSONArray("stopwords");
-        if (stopwords != null && stopwords.length() > 0) {
-            STOPWORDS.clear();
+        if (stopwords != null) {
             for (int i = 0; i < stopwords.length(); i++) {
-                String sw = normalizeText(stopwords.optString(i, ""));
+                String sw = LocalDocumentQueryEngine.normalizeText(stopwords.optString(i, ""));
                 if (!sw.isEmpty()) {
-                    STOPWORDS.add(sw);
+                    stopwordSet.add(sw);
                 }
             }
         }
+        engine.replaceLexicon(tokenMap, queryMap, stopwordSet);
+    }
+
+    private Map<String, String[]> readSynonymObject(JSONObject object) {
+        Map<String, String[]> result = new HashMap<>();
+        if (object == null) {
+            return result;
+        }
+        JSONArray names = object.names();
+        if (names == null) {
+            return result;
+        }
+        for (int i = 0; i < names.length(); i++) {
+            String key = LocalDocumentQueryEngine.normalizeText(names.optString(i, ""));
+            if (key.isEmpty()) {
+                continue;
+            }
+            String[] values = jsonArrayToStringArray(object.optJSONArray(key));
+            if (values.length > 0) {
+                result.put(key, values);
+            }
+        }
+        return result;
     }
 
     private String readAssetText(AssetManager assets, String fileName) throws IOException {
@@ -582,7 +366,7 @@ public class LocalDocumentRetriever {
         }
         List<String> out = new ArrayList<>();
         for (int i = 0; i < array.length(); i++) {
-            String value = normalizeText(array.optString(i, "")).trim();
+            String value = LocalDocumentQueryEngine.normalizeText(array.optString(i, "")).trim();
             if (!value.isEmpty()) {
                 out.add(value);
             }
@@ -595,22 +379,23 @@ public class LocalDocumentRetriever {
         public final String fileKey;
         public final int order;
         public final String text;
+        final String normalizedText;
+        final Set<String> tokens;
 
         DocumentChunk(String documentName, String fileKey, int order, String text) {
+            this(documentName, fileKey, order, text, new LocalDocumentQueryEngine());
+        }
+
+        DocumentChunk(String documentName, String fileKey, int order, String text,
+                      LocalDocumentQueryEngine queryEngine) {
             this.documentName = documentName;
             this.fileKey = fileKey;
             this.order = order;
             this.text = text;
-        }
-    }
-
-    private static class ScoredChunk {
-        private final DocumentChunk chunk;
-        private final int score;
-
-        private ScoredChunk(DocumentChunk chunk, int score) {
-            this.chunk = chunk;
-            this.score = score;
+            this.normalizedText = LocalDocumentQueryEngine.normalizeText(text);
+            this.tokens = queryEngine == null
+                    ? new HashSet<String>()
+                    : queryEngine.tokenize(text);
         }
     }
 }
